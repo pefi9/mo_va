@@ -28,7 +28,6 @@ if dataset == 'mnist' then
     temp = torch.load('data/mnist/test.th7', 'ascii')
     testData.data = temp[1]
     testData.labels = temp[2]
-
 end
 
 
@@ -61,6 +60,9 @@ for i=1,tesize do
     testData.labels[i] = (testData.labels[i] == 0 and 10 or testData.labels[i])
 end
 
+print(trainData.data[trsize])
+
+print(testData.data[tesize])
 
 
 

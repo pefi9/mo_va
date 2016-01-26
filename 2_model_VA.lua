@@ -29,8 +29,8 @@ lsSize = 128
 
 
 -- glimpse sensor
-glimpseSize = 12
-glimpseCount = 3
+glimpseSize = 8
+glimpseCount = 1
 glimpseScale = 2
 
 gsSize = 128
@@ -47,12 +47,12 @@ gSize = 256
 
 -- recurrent
 rSize = 256
-rho = 5
+rho = 7
 
 -- action location
-locatorStd = 0.3
+locatorStd = 0.11
 stochastic = false
-unitPixels = HEIGHT - glimpseSize   -- center of the smallest glimpses will touch the border of the image
+unitPixels = 13       --HEIGHT - glimpseSize   -- center of the smallest glimpses will touch the border of the image
 rewardScale = 1
 
 ----------------------------------------------------------------------
@@ -130,6 +130,8 @@ concat2 = nn.ConcatTable():add(nn.Identity()):add(concat)
 agent:add(concat2)
 
 model = agent
+
+
 
 
 

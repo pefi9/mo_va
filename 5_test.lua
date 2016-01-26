@@ -21,7 +21,7 @@ function test()
     end
 
     -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
-    model:evaluate()
+--    model:evaluate()
 
     -- test over test data
     print('==> testing on test set:')

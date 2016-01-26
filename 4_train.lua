@@ -135,6 +135,7 @@ function train()
 
         prev_parameters:add(prev_dfdx)
         parameters:copy(prev_parameters)
+        model:maxParamNorm(-1) -- affects params
     end
 
     ra = model:findModules('nn.RecurrentAttention')[1]

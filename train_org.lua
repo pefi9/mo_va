@@ -63,6 +63,7 @@ local opt = cmd:parse(arg or {})
 if not opt.silent then
     table.print(opt)
 end
+cmd:log('logger.log', opt)
 
 if opt.xpPath ~= '' then
     -- check that saved model exists
@@ -181,6 +182,16 @@ train = dp.Optimizer{
         if not opt.silent then
             print("learningRate", opt.learningRate)
         end
+
+        ra = agent:findModules('nn.RecurrentAttention')[1]
+--        print(testData.labels[tesize])
+--        print(pred[1][1])
+
+        local locations = ra.actions
+        for _, l in pairs(locations) do
+            print(l[1][1] .. " X " .. l[1][2])
+        end
+
     end
     end,
 
