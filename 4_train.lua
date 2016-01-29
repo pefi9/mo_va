@@ -35,12 +35,12 @@ optimState = {
     nesterov = true,
     dampening = 0
 }
-optimMethod = optim.nag
+optimMethod = optim.sgd
 
 lr = opt.learningRate
 wd = opt.weightDecay
 momentum = opt.momentum
-lrDecay = 1e-7
+lrDecay = 1e-3
 
 ----------------------------------------------------------------------
 print '==> defining training procedure'
@@ -63,8 +63,7 @@ function train()
     print('==> doing epoch on training data:')
     print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
 
-    local output
-    for t = 1, trsize, opt.batchSize do
+    for t = 1, trsize - opt.batchSize, opt.batchSize do
 
         -- disp progress
         xlua.progress(t, trsize)
@@ -73,14 +72,9 @@ function train()
         local inputs = {}
         local targets = {}
 
-        for i = t, math.min(t + opt.batchSize - 1, trsize) do
-            -- load new sample
-            local input = trainData.data[shuffle[i]]
-            local target = trainData.labels[shuffle[i]]
-
-            table.insert(inputs, input)
-            table.insert(targets, target)
-        end
+        -- create mini batch
+        local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
+        local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
 
 
         -- Nesterov momentum
@@ -89,8 +83,9 @@ function train()
         if not prev_parameters then
             prev_parameters = parameters:clone()
         else
-            prev_parameters:copy(parameters)
+            prev_parameters:resizeAs(parameters):copy(parameters)
         end
+
         if prev_dfdx then
             parameters:add(momentum, prev_dfdx)
         end
@@ -101,56 +96,66 @@ function train()
         -- f is the average of all criterions
         local f = 0
 
-        -- evaluate function for complete mini batch
-        for i = 1, #inputs do
-            -- estimate f
-            output = model:forward(inputs[i])
-            local err = criterion:forward(output, torch.Tensor { targets[i] })
-            f = f + err
+        -- estimate f
+        local output = model:forward(inputs)
+        local err = criterion:forward(output, targets)
+        f = f + err
 
-            -- estimate df/dW
-            local df_do = criterion:backward(output, torch.Tensor { targets[i] })
-            model:backward(inputs[i], df_do)
+        -- estimate df/dW
+        local df_do = criterion:backward(output, targets)
+        model:backward(inputs, df_do)
 
-            -- update confusion
-            confusion:add(output[1][1], targets[i])
+        -- update confusion
+        if (opt.model == 'va') then
+            confusion:batchAdd(output[1], targets)
+        else
+            for d = 1, opt.digits do
+                confusion:add(output[d], targets[i][d])
+            end
         end
 
         -- normalize gradients and f(X)
-        gradParameters:div(#inputs)
-        f = f / #inputs
+        gradParameters:div(inputs:size()[1])
+        f = f / inputs:size()[1]
 
         -- weight decay
         if (wd ~= 0) then
             gradParameters:add(wd, parameters)
         end
-        --
-        --        -- (4) apply momentum
+
+        -- (3) learning rate decay (annealing)
+        --        local clr = lr / (1 + nevals*lrd)
+
+        -- (4) apply momentum
         if not prev_dfdx then
             prev_dfdx = torch.Tensor():typeAs(gradParameters):resizeAs(gradParameters):fill(0)
         else
             prev_dfdx:mul(momentum)
-            prev_dfdx:add(-lr, gradParameters)
         end
 
+        prev_dfdx:add(-lr, gradParameters)
         prev_parameters:add(prev_dfdx)
         parameters:copy(prev_parameters)
-        model:maxParamNorm(-1) -- affects params
+        --        model:maxParamNorm(-1) -- affects params
     end
 
-    ra = model:findModules('nn.RecurrentAttention')[1]
-    print(trainData.labels[trsize])
-    print(output[1][1])
+    if (opt.model == 'va') then
+        local out = model:forward(trainData.data[trsize])
+        ra = model:findModules('nn.RecurrentAttention')[1]
+        print(trainData.labels[trsize])
+        print(out[1][1])
 
-    local locations = ra.actions
-    for _, l in pairs(locations) do
-        print(l[1][1] .. " X " .. l[1][2])
+        local locations = ra.actions
+        for _, l in pairs(locations) do
+            print(l[1][1] .. " X " .. l[1][2])
+        end
     end
 
     -- time taken
     time = sys.clock() - time
     time = time / trsize
     print("\n==> time to learn 1 sample = " .. (time * 1000) .. 'ms')
+    print("Learning rate: " .. lr)
 
     -- print confusion matrix
     print(confusion)
@@ -171,7 +176,7 @@ function train()
     -- next epoch
     confusion:zero()
     epoch = epoch + 1
-    lr = (lrDecay == 0 and lr or lr * lrDecay)
+    lr = (lrDecay == 0 and lr or lr / (1 + lrDecay))
 end
 
 
@@ -199,16 +204,8 @@ function trainOptim()
         xlua.progress(t, trsize)
 
         -- create mini batch
-        local inputs = {}
-        local targets = {}
-        for i = t, math.min(t + opt.batchSize - 1, trsize) do
-            -- load new sample
-            local input = trainData.data[shuffle[i]]
-            local target = trainData.labels[shuffle[i]]
-
-            table.insert(inputs, input)
-            table.insert(targets, target)
-        end
+        local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
+        local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())[{{},1}]
 
         -- create closure to evaluate f(X) and df/dX
         local feval = function(x)
@@ -223,20 +220,24 @@ function trainOptim()
             -- f is the average of all criterions
             local f = 0
 
-            -- evaluate function for complete mini batch
-            for i = 1, #inputs do
-                -- estimate f
-                output = model:forward(inputs[i])
-                local err = criterion:forward(output, torch.Tensor { targets[i] })
-                f = f + err
+            -- estimate f
+            output = model:forward(inputs)
+            local err = criterion:forward(output, targets)
+            f = f + err
 
-                -- estimate df/dW
-                local df_do = criterion:backward(output, torch.Tensor { targets[i] })
-                model:backward(inputs[i], df_do)
+            -- estimate df/dW
+            local df_do = criterion:backward(output, targets)
+            model:backward(inputs, df_do)
 
-                -- update confusion
-                confusion:add(output[1][1], targets[i])
+            -- update confusion
+            if (opt.model == 'va') then
+                confusion:batchAdd(output[1], targets)
+            else
+                for d = 1, opt.digits do
+                    confusion:add(output[d], targets[i][d])
+                end
             end
+
 
             -- normalize gradients and f(X)
             gradParameters:div(#inputs)
@@ -252,13 +253,15 @@ function trainOptim()
     end
 
 
-    ra = model:findModules('nn.RecurrentAttention')[1]
-    print(trainData.labels[trsize])
-    print(output[1][1])
+    if (opt.model == 'va') then
+        ra = model:findModules('nn.RecurrentAttention')[1]
+        print(trainData.labels[trsize])
+        print(output[1][1])
 
-    local locations = ra.actions
-    for _, l in pairs(locations) do
-        print(l[1][1] .. " X " .. l[1][2])
+        local locations = ra.actions
+        for _, l in pairs(locations) do
+            print(l[1][1] .. " X " .. l[1][2])
+        end
     end
 
 
@@ -313,10 +316,8 @@ function preTrainOptim()
             -- load new sample
             local loc_x = (math.random() * 2 - 1) * maxWShift
             local loc_y = (math.random() * 2 - 1) * maxHShift
-
             local input = { trainData.data[shuffle[i]], torch.Tensor { loc_y, loc_x } }
             local target = trainData.labels[shuffle[i]]
-
             table.insert(inputs, input)
             table.insert(targets, target)
         end
@@ -345,7 +346,6 @@ function preTrainOptim()
         -- normalize gradients and f(X)
         gradParameters:div(#inputs)
         model:updateParameters(lr)
-
     end
 
     -- time taken

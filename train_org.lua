@@ -63,7 +63,7 @@ local opt = cmd:parse(arg or {})
 if not opt.silent then
     table.print(opt)
 end
-cmd:log('logger.log', opt)
+cmd:log('logger_org2.log', opt)
 
 if opt.xpPath ~= '' then
     -- check that saved model exists
@@ -176,23 +176,14 @@ train = dp.Optimizer{
     ,
 
     epoch_callback = function(model, report) -- called every epoch
-    if report.epoch > 0 then
-        opt.learningRate = opt.learningRate + opt.decayFactor
-        opt.learningRate = math.max(opt.minLR, opt.learningRate)
-        if not opt.silent then
-            print("learningRate", opt.learningRate)
+        if report.epoch > 0 then
+            opt.learningRate = opt.learningRate + opt.decayFactor
+            opt.learningRate = math.max(opt.minLR, opt.learningRate)
+            if not opt.silent then
+                print("learningRate", opt.learningRate)
+            end
+            print(agent:get(6):get(2):get(2):get(2).bias)
         end
-
-        ra = agent:findModules('nn.RecurrentAttention')[1]
---        print(testData.labels[tesize])
---        print(pred[1][1])
-
-        local locations = ra.actions
-        for _, l in pairs(locations) do
-            print(l[1][1] .. " X " .. l[1][2])
-        end
-
-    end
     end,
 
     callback = function(model, report)

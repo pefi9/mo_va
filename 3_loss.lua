@@ -40,16 +40,19 @@ elseif opt.loss == 'mse' then
 
 elseif opt.loss == 'reinforce' then
 
-
     criterion = nn.ParallelCriterion(true)
-            :add(nn.ModuleCriterion(nn.ClassNLLCriterion(), nil, nn.Convert())) -- BACKPROP
-            :add(nn.VRClassReward(model, 1), nil, nn.Convert()) -- REINFORCE
+    criterion:add(nn.ModuleCriterion(nn.ClassNLLCriterion(), nil, nn.Convert())) -- BACKPROP
+    criterion:add(nn.VRClassReward(model, 1), nil, nn.Convert()) -- REINFORCE
 
+elseif opt.loss == 'multi_nll' then
 
+    criterion = nn.ParallelCriterion()
+    for idx = 1, opt.digits do
+        criterion:add(nn.ClassNLLCriterion())
+    end
 else
 
     error('unknown -loss')
-
 end
 
 ----------------------------------------------------------------------

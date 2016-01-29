@@ -7,9 +7,8 @@
 --
 
 require 'dp'
-require 'dpnn'
+--require 'dpnn'
 require 'rnn'
-require 'nn'
 require 'image'
 
 ----------------------------------------------------------------------
@@ -30,7 +29,7 @@ lsSize = 128
 
 -- glimpse sensor
 glimpseSize = 8
-glimpseCount = 1
+glimpseCount = 3
 glimpseScale = 2
 
 gsSize = 128
@@ -52,7 +51,7 @@ rho = 7
 -- action location
 locatorStd = 0.11
 stochastic = false
-unitPixels = 13       --HEIGHT - glimpseSize   -- center of the smallest glimpses will touch the border of the image
+unitPixels = 13*2       --HEIGHT - glimpseSize   -- center of the smallest glimpses will touch the border of the image
 rewardScale = 1
 
 ----------------------------------------------------------------------
@@ -64,7 +63,7 @@ print '==> construct model'
 locationSensor = nn.Sequential()
 locationSensor:add(nn.SelectTable(2))
 locationSensor:add(nn.Linear(2, lsSize))
-locationSensor:add(nn.Tanh())
+locationSensor:add(nn.ReLU())
 
 
 
@@ -72,8 +71,8 @@ locationSensor:add(nn.Tanh())
 glimpseSensor = nn.Sequential()
 glimpseSensor:add(nn.DontCast(nn.SpatialGlimpse(glimpseSize, glimpseCount, glimpseScale):float(),true))
 glimpseSensor:add(nn.Collapse(3))
-glimpseSensor:add(nn.Linear(DATA_N_CHANNEL * (glimpseSize^2) * glimpseCount, gsSize))
-glimpseSensor:add(nn.Tanh())
+glimpseSensor:add(nn.Linear(nfeats * (glimpseSize^2) * glimpseCount, gsSize))
+glimpseSensor:add(nn.ReLU())
 
 
 
@@ -99,7 +98,7 @@ locator:add(nn.HardTanh()) -- bounds mean between -1 and 1
 locator:add(nn.ReinforceNormal(2 * locatorStd, stochastic)) -- sample from normal, uses REINFORCE learning rule
 assert(locator:get(3).stochastic == stochastic, "Please update the dpnn package : luarocks install dpnn")
 locator:add(nn.HardTanh()) -- bounds sample between -1 and 1
-locator:add(nn.MulConstant(unitPixels / HEIGHT))
+locator:add(nn.MulConstant(unitPixels / height))
 
 
 --[[ ATTENTION MODEL ]]--

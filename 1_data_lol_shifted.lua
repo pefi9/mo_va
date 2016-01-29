@@ -16,7 +16,7 @@ end
 -- classes
 classes = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' }
 
-DATA_FILE = '/Users/petrfiala/rts_munity/code/analyzer/data/digits_data.csv'
+DATA_FILE = '/Users/petrfiala/rts_munity/code/analyzer/data/torch/digits_data.csv'
 DATA_WIDTH = 20
 DATA_HEIGHT = 30
 DATA_N_CHANNEL = 1
@@ -63,7 +63,7 @@ tesize = size - trsize
 
 trainData = {
     data = torch.DoubleTensor(trsize, DATA_N_CHANNEL, HEIGHT, WIDTH),
-    labels = {}
+    labels = torch.Tensor(trsize)
 }
 
 testData = {
@@ -86,6 +86,7 @@ for i = 1, size do
     local tempInput = torch.Tensor(DATA_N_CHANNEL, HEIGHT, WIDTH):fill(0)
 
     for i = 1, DATA_N_CHANNEL do
+--        tempInput[i] = temp[i]
         tempInput[i]:sub(rand_y, rand_y + DATA_HEIGHT - 1, rand_x, rand_x + DATA_WIDTH - 1):copy(temp[i])
     end
 

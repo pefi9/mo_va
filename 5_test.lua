@@ -21,11 +21,10 @@ function test()
     end
 
     -- set model to evaluate mode (for modules that differ in training and testing, like Dropout)
---    model:evaluate()
+    --    model:evaluate()
 
     -- test over test data
     print('==> testing on test set:')
-    local pred
     for t = 1, tesize do
         -- disp progress
         xlua.progress(t, tesize)
@@ -35,17 +34,27 @@ function test()
         local target = testData.labels[t]
 
         -- test sample
-        pred = model:forward(input)
-        confusion:add(pred[1][1], target)
+        local pred = model:forward(input)
+        -- update confusion
+        if (opt.model == 'va') then
+            confusion:add(pred[1][1], target)
+        else
+            for d = 1, opt.digits do
+                confusion:add(pred[d], target[i][d])
+            end
+        end
     end
 
-    ra = model:findModules('nn.RecurrentAttention')[1]
-    print(testData.labels[tesize])
-    print(pred[1][1])
+    if (opt.model == 'va') then
+        local out = model:forward(testData.data[tesize])
+        ra = model:findModules('nn.RecurrentAttention')[1]
+        print(testData.labels[tesize])
+        print(out[1][1])
 
-    local locations = ra.actions
-    for _, l in pairs(locations) do
-        print(l[1][1] .. " X " .. l[1][2])
+        local locations = ra.actions
+        for _, l in pairs(locations) do
+            print(l[1][1] .. " X " .. l[1][2])
+        end
     end
 
 

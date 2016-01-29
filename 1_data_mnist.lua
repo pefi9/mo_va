@@ -22,23 +22,56 @@ trainData, testData = {}, {}
 
 
 if dataset == 'mnist' then
-    local temp = torch.load('data/mnist/train.th7', 'ascii')
-    trainData.data = temp[1]
-    trainData.labels = temp[2]
-    temp = torch.load('data/mnist/test.th7', 'ascii')
-    testData.data = temp[1]
-    testData.labels = temp[2]
-end
 
+    -- train data
+    local temp = torch.load('data/mnist/train.th7', 'ascii')
+    trsize = 10000 --temp[1]:size()[1]
+
+    trainData.data = torch.DoubleTensor(trsize, HEIGHT, WIDTH * opt.digits, 1)
+    trainData.labels = torch.DoubleTensor(trsize, opt.digits)
+    for rec = 1, trsize do
+        local tempData
+        for digit = 1, opt.digits do
+            if digit == 1 then
+                tempData = temp[1][rec]
+                trainData.labels[rec][digit] = (temp[2][rec] == 0 and 10 or temp[2][rec])
+            else
+                local rand = math.floor(math.random() * trsize) + 1
+                tempData = tempData:cat(temp[1][rand], 2)
+                trainData.labels[rec][digit] = (temp[2][rand] == 0 and 10 or temp[2][rand])
+            end
+        end
+        trainData.data[rec] = tempData
+    end
+
+    -- test data
+    local temp = torch.load('data/mnist/test.th7', 'ascii')
+    tesize = 1000 --temp[1]:size()[1]
+
+    testData.data = torch.DoubleTensor(tesize, HEIGHT, WIDTH * opt.digits, 1)
+    testData.labels = torch.DoubleTensor(tesize, opt.digits)
+    for rec = 1, tesize do
+        local tempData
+        for digit = 1, opt.digits do
+            if digit == 1 then
+                tempData = temp[1][rec]
+                testData.labels[rec][digit] = (temp[2][rec] == 0 and 10 or temp[2][rec])
+            else
+                local rand = math.floor(math.random() * tesize) + 1
+                tempData = tempData:cat(temp[1][rand], 2)
+                testData.labels[rec][digit] = (temp[2][rand] == 0 and 10 or temp[2][rand])
+            end
+        end
+        testData.data[rec] = tempData
+    end
+
+end
 
 ---------------------------------------------------------------------------------
 print("==> Preprocessing data")
 
-trainData.data = trainData.data:double()
-testData.data = testData.data:double()
-
-trainData.data = trainData.data:transpose(2,3):transpose(2,4)
-testData.data = testData.data:transpose(2,3):transpose(2,4)
+trainData.data = trainData.data:transpose(2, 3):transpose(2, 4)
+testData.data = testData.data:transpose(2, 3):transpose(2, 4)
 
 
 print("==> Preprocessing normalization")
@@ -49,16 +82,6 @@ local std = trainData.data:std()
 trainData.data = trainData.data:add(-mean):div(std)
 testData.data = testData.data:add(-mean):div(std)
 
-trsize = trainData.labels:size(1)
-tesize = testData.labels:size(1)
-
-for i=1,trsize do
-    trainData.labels[i] = (trainData.labels[i] == 0 and 10 or trainData.labels[i])
-end
-
-for i=1,tesize do
-    testData.labels[i] = (testData.labels[i] == 0 and 10 or testData.labels[i])
-end
 
 print(trainData.data[trsize])
 
