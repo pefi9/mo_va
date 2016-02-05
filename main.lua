@@ -37,8 +37,8 @@ cmd:option('--threads', 1, 'set number of threads')
 cmd:option('--seed', 123)
 
 --[[ data ]] --
-cmd:option('--dataset', 'lol', 'which data to use: mnist | lol')
-cmd:option('--digits', 1, 'how many digits has the number')
+cmd:option('--dataset', 'mnist', 'which data to use: mnist | lol')
+cmd:option('--digits', 2, 'how many digits has the number')
 
 --[[ model ]] --
 cmd:option('--model', 'va', 'which model to use: cnn | va (visual_attention)')
@@ -48,7 +48,7 @@ cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse 
 
 --[[ train ]] --
 cmd:option('--save', 'testing', 'selecet subfolder where to store loggers')
-cmd:option('--batchSize', 20)
+cmd:option('--batchSize', 10)
 cmd:option('--learningRate', 1e-2, 'setup the learning rate')
 cmd:option('--momentum', 9e-1, 'setup the momentum')
 cmd:option('--weightDecay', 0, 'weight decay')

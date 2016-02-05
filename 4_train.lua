@@ -68,9 +68,8 @@ function train()
         -- disp progress
         xlua.progress(t, trsize)
 
-        -- create mini batch
-        local inputs = {}
-        local targets = {}
+        attention:rnn:forget()
+        attention:action:forget()
 
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
@@ -202,6 +201,9 @@ function trainOptim()
     for t = 1, trsize, opt.batchSize do
         -- disp progress
         xlua.progress(t, trsize)
+
+        attention:rnn:forget()
+        attention:action:forget()
 
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())

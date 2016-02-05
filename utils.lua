@@ -26,7 +26,7 @@ function preTrain()
 
     parameters, gradParameters = model:getParameters()
 
-    maxWShift = (DATA_WIDTH / 2 - glimpseSize / 2) / (WIDTH / 2)
+    maxWShift = (DATA_WIDTH / 2 - glimpseSize / 2) / (WIDTH / opt.digits / 2)
     maxHShift = (DATA_HEIGHT / 2 - glimpseSize / 2) / (HEIGHT / 2)
 
     while epoch < opt.preTrainEpochs do
