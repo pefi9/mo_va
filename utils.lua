@@ -17,27 +17,49 @@ function dirLookup(dir)
     return listOfFiles
 end
 
-function preTrain()
+function file_exists(name)
+    local f = io.open(name, "r")
+    if f ~= nil then io.close(f) return true else return false end
+end
 
-    -- create temp model for pretraining
-    model = nn.Sequential()
-    model:add(glimpse)
-    model:add(classifier)
+function preTrainModel()
 
-    parameters, gradParameters = model:getParameters()
+    if (not file_exists(paths.concat(opt.save, 'preTrainedModel.net'))) then
+        -- create temp model for pretraining
+        model = nn.Sequential()
+        model:add(glimpse)
+        model:add(classifier)
 
-    maxWShift = (DATA_WIDTH / 2 - glimpseSize / 2) / (WIDTH / opt.digits / 2)
-    maxHShift = (DATA_HEIGHT / 2 - glimpseSize / 2) / (HEIGHT / 2)
+        parameters, gradParameters = model:getParameters()
 
-    while epoch < opt.preTrainEpochs do
-        preTrainOptim()
+        local A, B, a, b = 0, WIDTH, -1, 1
+        wMin = ((glimpseSize / 2) - A) * (b - a) / (B - A) + a
+        wMax = ((DATA_WIDTH - glimpseSize / 2) - A) * (b - a) / (B - A) + a
+
+        local A, B, a, b = 0, HEIGHT, -1, 1
+        hMin = ((glimpseSize / 2) - A) * (b - a) / (B - A) + a
+        hMax = ((DATA_HEIGHT - glimpseSize / 2) - A) * (b - a) / (B - A) + a
+
+        print("wMin: " .. wMin .. " X wMax: " .. wMax)
+        print("hMin: " .. hMin .. " X hMax: " .. hMax)
+
+        print("==> PreTraining")
+        while epoch < opt.preTrainEpochs do
+            preTrainingOptim()
+        end
+
+        -- PRE-TRAINED
+        torch.save(paths.concat(opt.save, 'preTrainedModel.net'), model)
+    else
+        local tempModel = torch.load(paths.concat(opt.save, 'preTrainedModel.net'))
+        fixedGlimpse = tempModel:get(1):clone()
+--        fixedClassifier = tempModel:get(2):clone()
     end
 
-    -- PRE-TRAINED
     opt.preTrain = false
 
-    -- re-load data with random shift
-    dofile '1_data_lol_shifted.lua'
+    glimpse = fixedGlimpse:clone()
+--    classifier = fixedClassifier:clone()
 
     model = agent
     parameters, gradParameters = model:getParameters()

@@ -61,20 +61,17 @@ function train()
 
     -- do one epoch
     print('==> doing epoch on training data:')
-    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
+    print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ' ; learning rate = ' .. lr .. ']')
 
     for t = 1, trsize - opt.batchSize, opt.batchSize do
 
         -- disp progress
         xlua.progress(t, trsize)
 
-        attention:rnn:forget()
-        attention:action:forget()
-
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
         local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
-
+        local mask = torch.Tensor(opt.batchSize):fill(1)
 
         -- Nesterov momentum
         -- (1) evaluate f(x) and df/dx
@@ -91,26 +88,38 @@ function train()
 
         -- reset gradients
         gradParameters:zero()
+        -- recurrent modules has to forget current batch
+        attention.rnn:forget()
+        attention.action:forget()
 
         -- f is the average of all criterions
         local f = 0
 
         -- estimate f
-        local output = model:forward(inputs)
-        local err = criterion:forward(output, targets)
-        f = f + err
+        for d = 1, opt.digits + 1 do
+            local output = model:forward(inputs)
+            local err = criterion:forward(output, targets[{ {}, d }])
+            f = f + err
 
-        -- estimate df/dW
-        local df_do = criterion:backward(output, targets)
-        model:backward(inputs, df_do)
+            -- update confusion
+            confusion:batchAdd(output[1], targets[{ {}, d }])
+            -- estimate df/dW
+            local df_do = criterion:backward(output, targets[{ {}, d }])
 
-        -- update confusion
-        if (opt.model == 'va') then
-            confusion:batchAdd(output[1], targets)
-        else
-            for d = 1, opt.digits do
-                confusion:add(output[d], targets[i][d])
+            local _, idxs = torch.max(output[1], 2)
+            for b = 1, opt.batchSize do
+                df_do[1][b] = df_do[1][b]:mul(mask[b])
+                df_do[2][1][b] = df_do[2][1][b]:mul(mask[b])
+                df_do[2][2][b] = df_do[2][2][b]:mul(mask[b])
+
+                if (idxs[b][1] == 11 or idxs[b][1] ~= targets[b][d]) then -- end of the digits or incorrect class
+                mask[b] = 0
+                end
             end
+
+            model:backward(inputs, df_do)
+
+            if (torch.sum(mask) == 0) then break end
         end
 
         -- normalize gradients and f(X)
@@ -121,9 +130,6 @@ function train()
         if (wd ~= 0) then
             gradParameters:add(wd, parameters)
         end
-
-        -- (3) learning rate decay (annealing)
-        --        local clr = lr / (1 + nevals*lrd)
 
         -- (4) apply momentum
         if not prev_dfdx then
@@ -139,14 +145,19 @@ function train()
     end
 
     if (opt.model == 'va') then
-        local out = model:forward(trainData.data[trsize])
-        ra = model:findModules('nn.RecurrentAttention')[1]
-        print(trainData.labels[trsize])
-        print(out[1][1])
+        -- recurrent modules has to forget current batch
+        attention.rnn:forget()
+        attention.action:forget()
+        for d = 1, opt.digits + 1 do
+            local out = model:forward(trainData.data[trsize])
+            ra = model:findModules('nn.RecurrentAttention')[1]
+            print(trainData.labels[trsize][d])
+            print(out[1][1])
 
-        local locations = ra.actions
-        for _, l in pairs(locations) do
-            print(l[1][1] .. " X " .. l[1][2])
+            local locations = ra.actions
+            for _, l in pairs(locations) do
+                print(l[1][1] .. " X " .. l[1][2])
+            end
         end
     end
 
@@ -202,12 +213,10 @@ function trainOptim()
         -- disp progress
         xlua.progress(t, trsize)
 
-        attention:rnn:forget()
-        attention:action:forget()
 
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
-        local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())[{{},1}]
+        local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())[{ {}, 1 }]
 
         -- create closure to evaluate f(X) and df/dX
         local feval = function(x)
@@ -289,7 +298,7 @@ function trainOptim()
 end
 
 
-function preTrainOptim()
+function preTrainingOptim()
 
     -- epoch tracker
     epoch = epoch or 1
@@ -304,7 +313,7 @@ function preTrainOptim()
     shuffle = torch.randperm(trsize)
 
     -- do one epoch
-    print('==> doing epoch on training data:')
+    print('==> doing preTraining on training data:')
     print("==> online epoch # " .. epoch .. ' [batchSize = ' .. opt.batchSize .. ']')
     local output
     for t = 1, trsize, opt.batchSize do
@@ -315,11 +324,16 @@ function preTrainOptim()
         local inputs = {}
         local targets = {}
         for i = t, math.min(t + opt.batchSize - 1, trsize) do
+
             -- load new sample
-            local loc_x = (math.random() * 2 - 1) * maxWShift
-            local loc_y = (math.random() * 2 - 1) * maxHShift
+            local loc_x = (math.random() * (wMax - wMin)) + wMin
+            local loc_y = (math.random() * (hMax - hMin)) + hMin
+            --            print("locX: " .. loc_x .. " X locY: " .. loc_y)
+            -- take glimpses only from the 1st digit
             local input = { trainData.data[shuffle[i]], torch.Tensor { loc_y, loc_x } }
-            local target = trainData.labels[shuffle[i]]
+            -- use only the 1st target value
+            local target = trainData.labels[shuffle[i]][1]
+
             table.insert(inputs, input)
             table.insert(targets, target)
         end

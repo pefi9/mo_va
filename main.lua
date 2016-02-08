@@ -19,6 +19,7 @@ require 'rnn'
 require 'torch'
 require 'xlua'
 require 'optim'
+require 'paths'
 
 version = 1
 
@@ -44,25 +45,26 @@ cmd:option('--digits', 2, 'how many digits has the number')
 cmd:option('--model', 'va', 'which model to use: cnn | va (visual_attention)')
 
 --[[ loss ]] --
-cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse | margin | reinforce | multi_nll')
+cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse | margin | reinforce')
 
 --[[ train ]] --
 cmd:option('--save', 'testing', 'selecet subfolder where to store loggers')
 cmd:option('--batchSize', 10)
-cmd:option('--learningRate', 1e-2, 'setup the learning rate')
+cmd:option('--learningRate', 1e-1, 'setup the learning rate')
 cmd:option('--momentum', 9e-1, 'setup the momentum')
 cmd:option('--weightDecay', 0, 'weight decay')
 cmd:option('--plot', true)
-cmd:option('--epochs', 500, 'define max number of epochs')
-cmd:option('--preTrain', true, 'pretrain the glimpse sensor')
-cmd:option('--preTrainEpochs', 100, 'pretrain the glimpse sensor')
-cmd:option('--uniform', -0.1, 'initialize parameters using uniform distribution between -uniform and uniform. -1 means default initialization')
+cmd:option('--epochs', 1000, 'define max number of epochs')
+cmd:option('--preTrain', false, 'pretrain the glimpse sensor')
+cmd:option('--preTrainEpochs', 30, 'pretrain the glimpse sensor')
+cmd:option('--uniform', 0.1, 'initialize parameters using uniform distribution between -uniform and uniform. -1 means default initialization')
 
 
 cmd:text()
 opt = cmd:parse(arg or {})
 table.print(opt)
-cmd:log('logger.log', opt)
+os.execute("mkdir " .. opt.save)
+cmd:log(paths.concat(opt.save,'logger.log'), opt)
 
 --torch.setnumthreads(opt.threads)
 torch.manualSeed(opt.seed)
@@ -75,7 +77,6 @@ dofile 'utils.lua'
 if (opt.dataset == 'mnist') then
 
     dofile '1_data_mnist.lua'
-    --    dofile '2_model_mnist.lua'
 
 elseif (opt.dataset == 'lol') then
 
@@ -108,7 +109,7 @@ if opt.uniform > 0 then
 end
 
 if opt.preTrain then
-    preTrain()
+    preTrainModel()
 end
 
 while epoch < opt.epochs do

@@ -29,33 +29,34 @@ function test()
         -- disp progress
         xlua.progress(t, tesize)
 
+        -- recurrent modules has to forget current input
+        attention.rnn:forget()
+        attention.action:forget()
+
         -- get new sample
         local input = testData.data[t]
         local target = testData.labels[t]
 
         -- test sample
-        local pred = model:forward(input)
-        -- update confusion
-        if (opt.model == 'va') then
-            confusion:add(pred[1][1], target)
-        else
-            for d = 1, opt.digits do
-                confusion:add(pred[d], target[i][d])
-            end
+        for d = 1, target:size()[1] do
+            local pred = model:forward(input)
+            -- update confusion
+            confusion:add(pred[1][1], target[d])
         end
+
     end
 
-    if (opt.model == 'va') then
-        local out = model:forward(testData.data[tesize])
-        ra = model:findModules('nn.RecurrentAttention')[1]
-        print(testData.labels[tesize])
-        print(out[1][1])
-
-        local locations = ra.actions
-        for _, l in pairs(locations) do
-            print(l[1][1] .. " X " .. l[1][2])
-        end
-    end
+--    if (opt.model == 'va') then
+--        local out = model:forward(testData.data[tesize])
+--        ra = model:findModules('nn.RecurrentAttention')[1]
+--        print(testData.labels[tesize])
+--        print(out[1][1])
+--
+--        local locations = ra.actions
+--        for _, l in pairs(locations) do
+--            print(l[1][1] .. " X " .. l[1][2])
+--        end
+--    end
 
 
     -- timing
@@ -82,4 +83,6 @@ function test()
     -- next iteration:
     confusion:zero()
 end
+
+
 

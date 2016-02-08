@@ -25,8 +25,6 @@ height = HEIGHT
 -- location sensor
 lsSize = 128
 
-
-
 -- glimpse sensor
 glimpseSize = 8
 glimpseCount = 3
@@ -46,12 +44,12 @@ gSize = 256
 
 -- recurrent
 rSize = 256
-rho = 7
+rho = 5
 
 -- action location
-locatorStd = 0.11
+locatorStd = 0.50
 stochastic = false
-unitPixels = 13*2       --HEIGHT - glimpseSize   -- center of the smallest glimpses will touch the border of the image
+unitPixels = WIDTH - glimpseSize   -- center of the smallest glimpses will touch the border of the image
 rewardScale = 1
 
 ----------------------------------------------------------------------
@@ -98,7 +96,7 @@ locator:add(nn.HardTanh()) -- bounds mean between -1 and 1
 locator:add(nn.ReinforceNormal(2 * locatorStd, stochastic)) -- sample from normal, uses REINFORCE learning rule
 assert(locator:get(3).stochastic == stochastic, "Please update the dpnn package : luarocks install dpnn")
 locator:add(nn.HardTanh()) -- bounds sample between -1 and 1
-locator:add(nn.MulConstant(unitPixels / height))
+locator:add(nn.MulConstant(unitPixels / width))
 
 
 --[[ ATTENTION MODEL ]]--
@@ -111,7 +109,7 @@ agent = nn.Sequential()
 agent:add(attention)
 
 --[[ CLASSIFIER ]]--
-agent:add(nn.SelectTable(-1))
+--agent:add(nn.SelectTable(-1))
 classifier = nn.Sequential()
 classifier:add(nn.Linear(rSize, noutputs))
 classifier:add(nn.LogSoftMax())
