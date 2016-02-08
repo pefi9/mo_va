@@ -100,7 +100,8 @@ locator:add(nn.MulConstant(unitPixels / width))
 
 
 --[[ ATTENTION MODEL ]]--
-attention = nn.RecurrentAttention(rnn, locator, rho, {rSize})
+dofile 'RecurrentAttention.lua'
+attention = RecurrentAttention(rnn, locator, rho, {rSize})
 
 
 --[[ AGENT ]]--
@@ -111,8 +112,8 @@ agent:add(attention)
 --[[ CLASSIFIER ]]--
 --agent:add(nn.SelectTable(-1))
 classifier = nn.Sequential()
-classifier:add(nn.Linear(rSize, noutputs))
-classifier:add(nn.LogSoftMax())
+classifier:add(nn.Sequencer(nn.Linear(rSize, noutputs)))
+classifier:add(nn.Sequencer(nn.LogSoftMax()))
 
 agent:add(classifier)
 
@@ -124,7 +125,7 @@ concat = nn.ConcatTable():add(nn.Identity()):add(seq)
 concat2 = nn.ConcatTable():add(nn.Identity()):add(concat)
 
 -- output will be : {classpred, {classpred, basereward}}
-agent:add(concat2)
+agent:add(nn.Sequencer(concat2))
 
 model = agent
 

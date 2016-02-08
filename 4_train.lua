@@ -71,7 +71,7 @@ function train()
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
         local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
-        local mask = torch.Tensor(opt.batchSize):fill(1)
+
 
         -- Nesterov momentum
         -- (1) evaluate f(x) and df/dx
@@ -95,32 +95,19 @@ function train()
         -- f is the average of all criterions
         local f = 0
 
-        -- estimate f
-        for d = 1, opt.digits + 1 do
-            local output = model:forward(inputs)
-            local err = criterion:forward(output, targets[{ {}, d }])
-            f = f + err
+        local output = model:forward(inputs)
+        local err = criterion:forward(output, targets[{ {}, d }])
+        f = f + err
 
-            -- update confusion
-            confusion:batchAdd(output[1], targets[{ {}, d }])
-            -- estimate df/dW
-            local df_do = criterion:backward(output, targets[{ {}, d }])
+        -- update confusion
+        confusion:batchAdd(output[1], targets[{ {}, d }])
+        -- estimate df/dW
+        local df_do = criterion:backward(output, targets[{ {}, d }])
 
-            local _, idxs = torch.max(output[1], 2)
-            for b = 1, opt.batchSize do
-                df_do[1][b] = df_do[1][b]:mul(mask[b])
-                df_do[2][1][b] = df_do[2][1][b]:mul(mask[b])
-                df_do[2][2][b] = df_do[2][2][b]:mul(mask[b])
 
-                if (idxs[b][1] == 11 or idxs[b][1] ~= targets[b][d]) then -- end of the digits or incorrect class
-                mask[b] = 0
-                end
-            end
 
-            model:backward(inputs, df_do)
+        model:backward(inputs, df_do)
 
-            if (torch.sum(mask) == 0) then break end
-        end
 
         -- normalize gradients and f(X)
         gradParameters:div(inputs:size()[1])
