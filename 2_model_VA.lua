@@ -44,10 +44,10 @@ gSize = 256
 
 -- recurrent
 rSize = 256
-rho = 5
+rho = opt.steps * (opt.digits)-- + 1)      -- + 1 for ending class
 
 -- action location
-locatorStd = 0.50
+locatorStd = 0.5
 stochastic = false
 unitPixels = WIDTH - glimpseSize   -- center of the smallest glimpses will touch the border of the image
 rewardScale = 1
@@ -100,8 +100,7 @@ locator:add(nn.MulConstant(unitPixels / width))
 
 
 --[[ ATTENTION MODEL ]]--
-dofile 'RecurrentAttention.lua'
-attention = RecurrentAttention(rnn, locator, rho, {rSize})
+attention = nn.RecurrentAttention(rnn, locator, rho, {rSize})
 
 
 --[[ AGENT ]]--
@@ -112,10 +111,10 @@ agent:add(attention)
 --[[ CLASSIFIER ]]--
 --agent:add(nn.SelectTable(-1))
 classifier = nn.Sequential()
-classifier:add(nn.Sequencer(nn.Linear(rSize, noutputs)))
-classifier:add(nn.Sequencer(nn.LogSoftMax()))
+classifier:add(nn.Linear(rSize, noutputs))
+classifier:add(nn.LogSoftMax())
 
-agent:add(classifier)
+agent:add(nn.Sequencer(classifier))
 
 --[[ REWARD PREDICTOR ]]--
 seq = nn.Sequential()

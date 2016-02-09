@@ -49,6 +49,7 @@ function train()
 
     -- epoch tracker
     epoch = epoch or 1
+    local trainError = 0
 
     -- local vars
     local time = sys.clock()
@@ -71,7 +72,7 @@ function train()
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
         local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
-
+        local mask = torch.Tensor(opt.batchSize):fill(1)
 
         -- Nesterov momentum
         -- (1) evaluate f(x) and df/dx
@@ -89,29 +90,49 @@ function train()
         -- reset gradients
         gradParameters:zero()
         -- recurrent modules has to forget current batch
-        attention.rnn:forget()
-        attention.action:forget()
+        --        attention.rnn:forget()
+        --        attention.action:forget()
 
         -- f is the average of all criterions
         local f = 0
 
         local output = model:forward(inputs)
-        local err = criterion:forward(output, targets[{ {}, d }])
-        f = f + err
+        local df_do = {}
 
-        -- update confusion
-        confusion:batchAdd(output[1], targets[{ {}, d }])
-        -- estimate df/dW
-        local df_do = criterion:backward(output, targets[{ {}, d }])
+        for s = 1, rho do
+            -- init grads
+            df_do[s] = {}
+            df_do[s][1] = torch.DoubleTensor(10, 11):fill(0)
+            df_do[s][2] = {}
+            df_do[s][2][1] = torch.DoubleTensor(10, 11):fill(0)
+            df_do[s][2][2] = torch.DoubleTensor(10, 1):fill(0)
 
-
+            -- save grads values for opt.steps-th index
+            if (s % opt.steps == 0) then
+                local d = math.ceil(s / 5)
+                local err = criterion:forward(output[s], targets[{ {}, d }])
+                f = f + err
+                -- update confusion
+                confusion:batchAdd(output[s][1], targets[{ {}, d }])
+                -- estimate df/dW
+                local temp = criterion:backward(output[s], targets[{ {}, d }])
+                local _, idxs = torch.max(output[s][1], 2)
+                for b = 1, opt.batchSize do
+                    df_do[s][1][b] = temp[1][b]:clone():mul(mask[b])
+                    df_do[s][2][1][b] = temp[2][1][b]:clone():mul(mask[b])
+                    df_do[s][2][2][b] = temp[2][2][b]:clone():mul(mask[b])
+                    if (idxs[b][1] == 11) or (idxs[b][1] ~= targets[b][d]) then
+                        mask[b] = 0
+                    end
+                end
+            end
+        end
 
         model:backward(inputs, df_do)
 
-
         -- normalize gradients and f(X)
         gradParameters:div(inputs:size()[1])
-        f = f / inputs:size()[1]
+        trainError = trainError + (f / opt.batchSize / (opt.digits + 1))
 
         -- weight decay
         if (wd ~= 0) then
@@ -135,24 +156,28 @@ function train()
         -- recurrent modules has to forget current batch
         attention.rnn:forget()
         attention.action:forget()
-        for d = 1, opt.digits + 1 do
-            local out = model:forward(trainData.data[trsize])
-            ra = model:findModules('nn.RecurrentAttention')[1]
-            print(trainData.labels[trsize][d])
-            print(out[1][1])
-
-            local locations = ra.actions
-            for _, l in pairs(locations) do
-                print(l[1][1] .. " X " .. l[1][2])
-            end
+        local out = model:forward(trainData.data[trsize])
+        ra = model:findModules('nn.RecurrentAttention')[1]
+        local locations = ra.actions
+        for _, l in pairs(locations) do
+            print(l[1][1] .. " X " .. l[1][2])
         end
+        for d = 1, opt.digits do
+            print(trainData.labels[trsize][d])
+            print(out[d * opt.steps][1])
+        end
+
+        print(parameters:max())
+        print(parameters:min())
+        print(parameters:sum())
+        print(parameters:mean())
     end
 
     -- time taken
     time = sys.clock() - time
     time = time / trsize
     print("\n==> time to learn 1 sample = " .. (time * 1000) .. 'ms')
-    print("Learning rate: " .. lr)
+    print("Train error: " .. trainError)
 
     -- print confusion matrix
     print(confusion)

@@ -38,11 +38,12 @@ cmd:option('--threads', 1, 'set number of threads')
 cmd:option('--seed', 123)
 
 --[[ data ]] --
-cmd:option('--dataset', 'mnist', 'which data to use: mnist | lol')
+cmd:option('--dataset', 'mnist', 'which data to use: mnist ')
 cmd:option('--digits', 2, 'how many digits has the number')
 
 --[[ model ]] --
 cmd:option('--model', 'va', 'which model to use: cnn | va (visual_attention)')
+cmd:option('--steps', 5, 'how many glimpses should model take for predicting one digit (total rho = steps * digits')
 
 --[[ loss ]] --
 cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse | margin | reinforce')

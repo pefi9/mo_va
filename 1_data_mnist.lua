@@ -44,7 +44,7 @@ if dataset == 'mnist' then
             end
         end
         trainData.data[rec] = tempData
-        trainData.labels[rec][opt.digits + 1] = 11
+--        trainData.labels[rec][opt.digits + 1] = 11
     end
 
     -- test data
@@ -66,7 +66,7 @@ if dataset == 'mnist' then
             end
         end
         testData.data[rec] = tempData
-        testData.labels[rec][opt.digits + 1] = 11
+--        testData.labels[rec][opt.digits + 1] = 11
     end
 
 end

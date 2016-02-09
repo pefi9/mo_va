@@ -38,10 +38,13 @@ function test()
         local target = testData.labels[t]
 
         -- test sample
-        for d = 1, target:size()[1] do
-            local pred = model:forward(input)
-            -- update confusion
-            confusion:add(pred[1][1], target[d])
+        local pred = model:forward(input)
+        for s = 1, rho do
+            if (s % 5 == 0) then
+                local d = s / 5
+                -- update confusion
+                confusion:add(pred[s][1][1], target[d])
+            end
         end
 
     end
