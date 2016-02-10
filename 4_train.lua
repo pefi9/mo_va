@@ -149,7 +149,7 @@ function train()
         prev_dfdx:add(-lr, gradParameters)
         prev_parameters:add(prev_dfdx)
         parameters:copy(prev_parameters)
-        --        model:maxParamNorm(-1) -- affects params
+                model:maxParamNorm(1) -- affects params
     end
 
     if (opt.model == 'va') then
@@ -162,7 +162,7 @@ function train()
         for _, l in pairs(locations) do
             print(l[1][1] .. " X " .. l[1][2])
         end
-        for d = 1, opt.digits do
+        for d = 1, opt.digits + 1 do
             print(trainData.labels[trsize][d])
             print(out[d * opt.steps][1])
         end

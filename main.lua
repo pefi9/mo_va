@@ -51,7 +51,7 @@ cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse 
 --[[ train ]] --
 cmd:option('--save', 'testing', 'selecet subfolder where to store loggers')
 cmd:option('--batchSize', 10)
-cmd:option('--learningRate', 1e-1, 'setup the learning rate')
+cmd:option('--learningRate', 1e-2, 'setup the learning rate')
 cmd:option('--momentum', 9e-1, 'setup the momentum')
 cmd:option('--weightDecay', 0, 'weight decay')
 cmd:option('--plot', true)

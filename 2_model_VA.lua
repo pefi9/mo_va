@@ -26,25 +26,24 @@ height = HEIGHT
 lsSize = 128
 
 -- glimpse sensor
-glimpseSize = 8
+glimpseSize = 6
 glimpseCount = 3
 glimpseScale = 2
 
 gsSize = 128
 
 -- hidden units, filter sizes (for ConvNet only):
---nstates = { 8, 16, 128 }
---filtsize = { 5, 3 }
---poolsize = { 2, 2 }
---remainSize = 8
---normkernel = image.gaussian1D(7)
+nstates = { 12 }
+filtsize = { 3 }
+poolsize = { 2 }
+remainSize = 2
 
 -- glimpse
 gSize = 256
 
 -- recurrent
 rSize = 256
-rho = opt.steps * (opt.digits)-- + 1)      -- + 1 for ending class
+rho = opt.steps * (opt.digits + 1)      -- + 1 for ending class
 
 -- action location
 locatorStd = 0.5
@@ -68,8 +67,19 @@ locationSensor:add(nn.ReLU())
 --[[ GLIMSE SENSOR ]]--
 glimpseSensor = nn.Sequential()
 glimpseSensor:add(nn.DontCast(nn.SpatialGlimpse(glimpseSize, glimpseCount, glimpseScale):float(),true))
-glimpseSensor:add(nn.Collapse(3))
-glimpseSensor:add(nn.Linear(nfeats * (glimpseSize^2) * glimpseCount, gsSize))
+-- Convolution
+conv = nn.Sequential()
+conv:add(nn.SpatialConvolution(glimpseCount, nstates[1], filtsize[1], filtsize[1]))
+conv:add(nn.ReLU())
+conv:add(nn.SpatialMaxPooling(poolsize[1], poolsize[1]))
+conv:add(nn.Reshape(nstates[1] * (remainSize^2)))
+conv:add(nn.Linear(nstates[1] * (remainSize^2), gsSize))
+glimpseSensor:add(conv)
+-- MLP
+--mlp = nn.Sequential()
+--mlp:add(nn.Collapse(3))
+--mlp:add(nn.Linear(nfeats * (glimpseSize^2) * glimpseCount, gsSize))
+--glimpseSensor:add(mlp)
 glimpseSensor:add(nn.ReLU())
 
 

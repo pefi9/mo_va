@@ -10,7 +10,7 @@
 classes = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'end' }
 DATA_WIDTH = 28
 DATA_HEIGHT = 28
-WIDTH = DATA_WIDTH * opt.digits
+WIDTH = DATA_WIDTH * opt.digits + 20
 HEIGHT = DATA_HEIGHT
 DATA_N_CHANNEL = 1
 ninputs = WIDTH * HEIGHT
@@ -27,7 +27,7 @@ if dataset == 'mnist' then
 
     -- train data
     local temp = torch.load('data/mnist/train.th7', 'ascii')
-    trsize = 1000 --temp[1]:size()[1]
+    trsize = temp[1]:size()[1]
 
     trainData.data = torch.DoubleTensor(trsize, HEIGHT, WIDTH, 1)
     trainData.labels = torch.DoubleTensor(trsize, opt.digits + 1)
@@ -38,18 +38,19 @@ if dataset == 'mnist' then
                 tempData = temp[1][rec]
                 trainData.labels[rec][digit] = (temp[2][rec] == 0 and 10 or temp[2][rec])
             else
+                tempData = tempData:cat(torch.FloatTensor(HEIGHT, 20):fill(0), 2)     -- create space between digits
                 local rand = math.floor(math.random() * trsize) + 1
                 tempData = tempData:cat(temp[1][rand], 2)
                 trainData.labels[rec][digit] = (temp[2][rand] == 0 and 10 or temp[2][rand])
             end
         end
         trainData.data[rec] = tempData
---        trainData.labels[rec][opt.digits + 1] = 11
+        trainData.labels[rec][opt.digits + 1] = 11
     end
 
     -- test data
     local temp = torch.load('data/mnist/test.th7', 'ascii')
-    tesize = 100 --temp[1]:size()[1]
+    tesize = temp[1]:size()[1]
 
     testData.data = torch.DoubleTensor(tesize, HEIGHT, WIDTH, 1)
     testData.labels = torch.DoubleTensor(tesize, opt.digits + 1)
@@ -60,13 +61,14 @@ if dataset == 'mnist' then
                 tempData = temp[1][rec]
                 testData.labels[rec][digit] = (temp[2][rec] == 0 and 10 or temp[2][rec])
             else
+                tempData = tempData:cat(torch.FloatTensor(HEIGHT, 20):fill(0), 2)     -- create space between digits
                 local rand = math.floor(math.random() * tesize) + 1
                 tempData = tempData:cat(temp[1][rand], 2)
                 testData.labels[rec][digit] = (temp[2][rand] == 0 and 10 or temp[2][rand])
             end
         end
         testData.data[rec] = tempData
---        testData.labels[rec][opt.digits + 1] = 11
+        testData.labels[rec][opt.digits + 1] = 11
     end
 
 end
