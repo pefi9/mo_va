@@ -18,7 +18,7 @@ print '==> define parameters of the model'
 noutputs = #classes
 
 -- input dimensions
-nfeats = DATA_N_CHANNEL
+nfeats = N_CHANNELS
 width = WIDTH
 height = HEIGHT
 
@@ -26,24 +26,24 @@ height = HEIGHT
 lsSize = 128
 
 -- glimpse sensor
-glimpseSize = 6
+glimpseSize = 20
 glimpseCount = 3
 glimpseScale = 2
 
 gsSize = 128
 
 -- hidden units, filter sizes (for ConvNet only):
-nstates = { 12 }
+nstates = { 36 }
 filtsize = { 3 }
 poolsize = { 2 }
-remainSize = 2
+remainSize = 5
 
 -- glimpse
 gSize = 256
 
 -- recurrent
 rSize = 256
-rho = opt.steps * (opt.digits + 1)      -- + 1 for ending class
+rho = opt.steps * (opt.digits)      -- + 1 for ending class
 
 -- action location
 locatorStd = 0.5
@@ -69,7 +69,7 @@ glimpseSensor = nn.Sequential()
 glimpseSensor:add(nn.DontCast(nn.SpatialGlimpse(glimpseSize, glimpseCount, glimpseScale):float(),true))
 -- Convolution
 conv = nn.Sequential()
-conv:add(nn.SpatialConvolution(glimpseCount, nstates[1], filtsize[1], filtsize[1]))
+conv:add(nn.SpatialConvolution(glimpseCount * nfeats, nstates[1], filtsize[1], filtsize[1]))
 conv:add(nn.ReLU())
 conv:add(nn.SpatialMaxPooling(poolsize[1], poolsize[1]))
 conv:add(nn.Reshape(nstates[1] * (remainSize^2)))

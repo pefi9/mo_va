@@ -13,6 +13,7 @@ DATA_HEIGHT = 28
 WIDTH = DATA_WIDTH * opt.digits + 20
 HEIGHT = DATA_HEIGHT
 DATA_N_CHANNEL = 1
+N_CHANNELS = DATA_N_CHANNEL
 ninputs = WIDTH * HEIGHT
 
 ---------------------------------------------------------------------------------
@@ -27,10 +28,10 @@ if dataset == 'mnist' then
 
     -- train data
     local temp = torch.load('data/mnist/train.th7', 'ascii')
-    trsize = temp[1]:size()[1]
+    trsize = 10000 --temp[1]:size()[1]
 
-    trainData.data = torch.DoubleTensor(trsize, HEIGHT, WIDTH, 1)
-    trainData.labels = torch.DoubleTensor(trsize, opt.digits + 1)
+    trainData.data = torch.FloatTensor(trsize, HEIGHT, WIDTH, 1)
+    trainData.labels = torch.FloatTensor(trsize, opt.digits + 1)
     for rec = 1, trsize do
         local tempData
         for digit = 1, opt.digits do
@@ -50,10 +51,10 @@ if dataset == 'mnist' then
 
     -- test data
     local temp = torch.load('data/mnist/test.th7', 'ascii')
-    tesize = temp[1]:size()[1]
+    tesize = 1000 --temp[1]:size()[1]
 
-    testData.data = torch.DoubleTensor(tesize, HEIGHT, WIDTH, 1)
-    testData.labels = torch.DoubleTensor(tesize, opt.digits + 1)
+    testData.data = torch.FloatTensor(tesize, HEIGHT, WIDTH, 1)
+    testData.labels = torch.FloatTensor(tesize, opt.digits + 1)
     for rec = 1, tesize do
         local tempData
         for digit = 1, opt.digits do

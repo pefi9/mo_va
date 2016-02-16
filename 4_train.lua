@@ -57,6 +57,8 @@ function train()
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
     model:training()
 
+    prepareTrainSet()
+    normTrain()
     -- shuffle at each epoch
     shuffle = torch.randperm(trsize)
 
@@ -102,11 +104,10 @@ function train()
         for s = 1, rho do
             -- init grads
             df_do[s] = {}
-            df_do[s][1] = torch.DoubleTensor(10, 11):fill(0)
+            df_do[s][1] = torch.FloatTensor(10, 11):fill(0)
             df_do[s][2] = {}
-            df_do[s][2][1] = torch.DoubleTensor(10, 11):fill(0)
-            df_do[s][2][2] = torch.DoubleTensor(10, 1):fill(0)
-
+            df_do[s][2][1] = torch.FloatTensor(10, 11):fill(0)
+            df_do[s][2][2] = torch.FloatTensor(10, 1):fill(0)
             -- save grads values for opt.steps-th index
             if (s % opt.steps == 0) then
                 local d = math.ceil(s / 5)
@@ -156,13 +157,15 @@ function train()
         -- recurrent modules has to forget current batch
         attention.rnn:forget()
         attention.action:forget()
-        local out = model:forward(trainData.data[trsize])
+        local temp = torch.Tensor(1, N_CHANNELS, HEIGHT, WIDTH)
+        temp[1] = trainData.data[trsize]
+        local out = model:forward(temp)
         ra = model:findModules('nn.RecurrentAttention')[1]
         local locations = ra.actions
         for _, l in pairs(locations) do
             print(l[1][1] .. " X " .. l[1][2])
         end
-        for d = 1, opt.digits + 1 do
+        for d = 1, opt.digits do
             print(trainData.labels[trsize][d])
             print(out[d * opt.steps][1])
         end

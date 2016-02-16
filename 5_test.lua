@@ -34,7 +34,13 @@ function test()
         attention.action:forget()
 
         -- get new sample
-        local input = testData.data[t]
+        local input
+        if (opt.dataset == 'mnist') then
+            input = testData.data[t]
+        elseif (opt.dataset == 'digits') then
+            input = torch.Tensor(1, N_CHANNELS, HEIGHT, WIDTH)
+            input[1] = testData.data[t]
+        end
         local target = testData.labels[t]
 
         -- test sample
@@ -46,20 +52,19 @@ function test()
                 confusion:add(pred[s][1][1], target[d])
             end
         end
-
     end
 
---    if (opt.model == 'va') then
---        local out = model:forward(testData.data[tesize])
---        ra = model:findModules('nn.RecurrentAttention')[1]
---        print(testData.labels[tesize])
---        print(out[1][1])
---
---        local locations = ra.actions
---        for _, l in pairs(locations) do
---            print(l[1][1] .. " X " .. l[1][2])
---        end
---    end
+    --    if (opt.model == 'va') then
+    --        local out = model:forward(testData.data[tesize])
+    --        ra = model:findModules('nn.RecurrentAttention')[1]
+    --        print(testData.labels[tesize])
+    --        print(out[1][1])
+    --
+    --        local locations = ra.actions
+    --        for _, l in pairs(locations) do
+    --            print(l[1][1] .. " X " .. l[1][2])
+    --        end
+    --    end
 
 
     -- timing
