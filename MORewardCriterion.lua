@@ -18,23 +18,21 @@
 -- [[Note : for RNNs with R = 1 for last step in sequence, encapsulate it
 -- in nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))]]
 ------------------------------------------------------------------------
---local MultiObjectRewardCriterion, parent = torch.class("MultiObjectRewardCriterion", "nn.Criterion")
+local MultiObjectRewardCriterion, parent = torch.class("MultiObjectRewardCriterion", "nn.Criterion")
 
-function MultiObjectRewardCriterion:__init(module, scale, criterion, nSteps)
+function MultiObjectRewardCriterion:__init(module, scale, criterion)
     parent.__init(self)
     self.module = module -- so it can call module:reinforce(reward)
     self.scale = scale or 1 -- scale of reward
     self.criterion = criterion or nn.MSECriterion() -- baseline criterion
     self.sizeAverage = true
     self.gradInput = { torch.Tensor() }
-    self.nSteps = nSteps
 end
 
 function MultiObjectRewardCriterion:updateOutput(input, target)
     assert(torch.type(input) == 'table')
-    --local input = self:toBatch(input[1], 1)
-    assert(input[1]:dim() == 3, 'Input[1] has to be in form: #objects x batchSize x #classes')
     local input = input[1]
+    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(input[1]:size())):forward(input)
 
     self._maxVal = self._maxVal or input.new()
     self._maxIdx = self._maxIdx
@@ -42,7 +40,7 @@ function MultiObjectRewardCriterion:updateOutput(input, target)
             or torch.LongTensor()
 
     -- max class value is class prediction
-    torch.max(self._maxVal, self._maxIdx, input, 3)     -- torch.max([resval, resind,] x [,dim])
+    torch.max(self._maxVal, self._maxIdx, input, 3) -- torch.max([resval, resind,] x [,dim])
 
     if torch.type(self._maxIdx) ~= torch.type(target) then
         self._target = self._target or self._maxIdx.new()
@@ -66,12 +64,14 @@ function MultiObjectRewardCriterion:updateOutput(input, target)
 end
 
 function MultiObjectRewardCriterion:updateGradInput(inputTable, target)
-    assert(inputTable[1]:dim() == 3, 'Input[1] has to be in form: #objects x batchSize x #classes')
---    local input = self:toBatch(inputTable[1], 1)
+    --    assert(inputTable[1]:dim() == 3, 'Input[1] has to be in form: #objects x batchSize x #classes')
+    --    local input = self:toBatch(inputTable[1], 1)
+    --    assert(inputTable[2]:dim() == 3, 'Input[2] has to be in form: #objects x batchSize x 1 (dim of base')
+    --    local baseline = self:toBatch(inputTable[2], 1)
     local input = inputTable[1]
-    assert(inputTable[2]:dim() == 3, 'Input[2] has to be in form: #objects x batchSize x 1 (dim of base')
---    local baseline = self:toBatch(inputTable[2], 1)
+    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(input[1]:size())):forward(input)
     local baseline = inputTable[2]
+    baseline = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(baseline[1]:size())):forward(baseline)
 
     -- reduce variance of reward using baseline
     self.vrReward = self.vrReward or self.reward.new()

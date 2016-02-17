@@ -36,7 +36,7 @@ gsSize = 128
 nstates = { 36 }
 filtsize = { 3 }
 poolsize = { 2 }
-remainSize = 5
+remainSize = 9
 
 -- glimpse
 gSize = 256
@@ -53,8 +53,6 @@ rewardScale = 1
 
 ----------------------------------------------------------------------
 print '==> construct model'
-
-
 
 --[[ LOCATION SENSOR ]]--
 locationSensor = nn.Sequential()
@@ -103,7 +101,7 @@ rnn = nn.Recurrent(rSize, glimpse, recurrent, nn.ReLU(), 99999)
 locator = nn.Sequential()
 locator:add(nn.Linear(rSize, 2))
 locator:add(nn.HardTanh()) -- bounds mean between -1 and 1
-locator:add(nn.ReinforceNormal(2 * locatorStd, stochastic)) -- sample from normal, uses REINFORCE learning rule
+locator:add(MOReinforceNormal(2 * locatorStd, stochastic)) -- sample from normal, uses REINFORCE learning rule
 assert(locator:get(3).stochastic == stochastic, "Please update the dpnn package : luarocks install dpnn")
 locator:add(nn.HardTanh()) -- bounds sample between -1 and 1
 locator:add(nn.MulConstant(unitPixels / width))
@@ -119,7 +117,15 @@ agent = nn.Sequential()
 agent:add(attention)
 
 --[[ CLASSIFIER ]]--
---agent:add(nn.SelectTable(-1))
+agent:add(nn.JoinTable(1))
+agent:add(nn.View(opt.batchSize, rSize))
+
+stepsSelection = nn.ConcatTable()
+for d = 1, opt.digits do
+    stepsSelection:add(nn.Select(1, d * opt.steps))
+end
+agent:add(stepsSelection)
+
 classifier = nn.Sequential()
 classifier:add(nn.Linear(rSize, noutputs))
 classifier:add(nn.LogSoftMax())
@@ -130,11 +136,11 @@ agent:add(nn.Sequencer(classifier))
 seq = nn.Sequential()
 seq:add(nn.Constant(1,1))
 seq:add(nn.Add(1))
-concat = nn.ConcatTable():add(nn.Identity()):add(seq)
+concat = nn.ConcatTable():add(nn.Identity()):add(nn.Sequencer(seq))
 concat2 = nn.ConcatTable():add(nn.Identity()):add(concat)
 
 -- output will be : {classpred, {classpred, basereward}}
-agent:add(nn.Sequencer(concat2))
+agent:add(concat2)
 
 model = agent
 

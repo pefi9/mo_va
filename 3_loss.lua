@@ -41,8 +41,8 @@ elseif opt.loss == 'mse' then
 elseif opt.loss == 'reinforce' then
 
     criterion = nn.ParallelCriterion(true)
-    criterion:add(nn.ModuleCriterion(nn.ClassNLLCriterion(), nil, nn.Convert())) -- BACKPROP
-    criterion:add(nn.VRClassReward(model, 1), nil, nn.Convert()) -- REINFORCE
+    criterion:add(nn.ModuleCriterion(nn.SequencerCriterion(nn.ClassNLLCriterion()), nil, nn.Convert())) -- BACKPROP
+    criterion:add(MultiObjectRewardCriterion(model, 1), nil, nn.Convert()) -- REINFORCE
 
 else
 

@@ -32,6 +32,7 @@ function test()
         -- recurrent modules has to forget current input
         attention.rnn:forget()
         attention.action:forget()
+        model:evaluate()
 
         -- get new sample
         local input

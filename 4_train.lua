@@ -57,8 +57,8 @@ function train()
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
     model:training()
 
-    prepareTrainSet()
-    normTrain()
+--    prepareTrainSet()
+--    normTrain()
     -- shuffle at each epoch
     shuffle = torch.randperm(trsize)
 
@@ -74,6 +74,7 @@ function train()
         -- create mini batch
         local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
         local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
+        targets = targets:transpose(1,2)
         local mask = torch.Tensor(opt.batchSize):fill(1)
 
         -- Nesterov momentum
@@ -101,35 +102,39 @@ function train()
         local output = model:forward(inputs)
         local df_do = {}
 
-        for s = 1, rho do
-            -- init grads
-            df_do[s] = {}
-            df_do[s][1] = torch.FloatTensor(10, 11):fill(0)
-            df_do[s][2] = {}
-            df_do[s][2][1] = torch.FloatTensor(10, 11):fill(0)
-            df_do[s][2][2] = torch.FloatTensor(10, 1):fill(0)
-            -- save grads values for opt.steps-th index
-            if (s % opt.steps == 0) then
-                local d = math.ceil(s / 5)
-                local err = criterion:forward(output[s], targets[{ {}, d }])
-                f = f + err
-                -- update confusion
-                confusion:batchAdd(output[s][1], targets[{ {}, d }])
-                -- estimate df/dW
-                local temp = criterion:backward(output[s], targets[{ {}, d }])
-                local _, idxs = torch.max(output[s][1], 2)
-                for b = 1, opt.batchSize do
-                    df_do[s][1][b] = temp[1][b]:clone():mul(mask[b])
-                    df_do[s][2][1][b] = temp[2][1][b]:clone():mul(mask[b])
-                    df_do[s][2][2][b] = temp[2][2][b]:clone():mul(mask[b])
-                    if (idxs[b][1] == 11) or (idxs[b][1] ~= targets[b][d]) then
-                        mask[b] = 0
-                    end
-                end
-            end
-        end
+--        for s = 1, rho do
+--            -- init grads
+--            df_do[s] = {}
+--            df_do[s][1] = torch.FloatTensor(10, 11):fill(0)
+--            df_do[s][2] = {}
+--            df_do[s][2][1] = torch.FloatTensor(10, 11):fill(0)
+--            df_do[s][2][2] = torch.FloatTensor(10, 1):fill(0)
+--            -- save grads values for opt.steps-th index
+--            if (s % opt.steps == 0) then
+--                local d = math.ceil(s / 5)
+--                local err = criterion:forward(output[s], targets[{ {}, d }])
+--                f = f + err
+--                -- update confusion
+--                confusion:batchAdd(output[s][1], targets[{ {}, d }])
+--                -- estimate df/dW
+--                local temp = criterion:backward(output[s], targets[{ {}, d }])
+--                local _, idxs = torch.max(output[s][1], 2)
+--                for b = 1, opt.batchSize do
+--                    df_do[s][1][b] = temp[1][b]:clone():mul(mask[b])
+--                    df_do[s][2][1][b] = temp[2][1][b]:clone():mul(mask[b])
+--                    df_do[s][2][2][b] = temp[2][2][b]:clone():mul(mask[b])
+--                    if (idxs[b][1] == 11) or (idxs[b][1] ~= targets[b][d]) then
+--                        mask[b] = 0
+--                    end
+--                end
+--            end
+--        end
 
-        model:backward(inputs, df_do)
+        local err = criterion:forward(output, targets)
+        f = f+err
+        local gradInput = criterion:backward(output, targets)
+
+        model:backward(inputs, gradInput)
 
         -- normalize gradients and f(X)
         gradParameters:div(inputs:size()[1])

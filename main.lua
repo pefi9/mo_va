@@ -21,6 +21,11 @@ require 'xlua'
 require 'optim'
 require 'paths'
 
+dofile 'MOSequencer.lua'
+dofile 'MOReinforce.lua'
+dofile 'MOReinforceNormal.lua'
+dofile 'MORewardCriterion.lua'
+
 version = 1
 
 ---------------------------------------------------------------------------------
@@ -38,8 +43,8 @@ cmd:option('--threads', 1, 'set number of threads')
 cmd:option('--seed', 123)
 
 --[[ data ]] --
-cmd:option('--dataset', 'digits', 'which data to use: mnist | digits')
-cmd:option('--digits', 4, 'how many digits has the number')
+cmd:option('--dataset', 'mnist', 'which data to use: mnist | digits')
+cmd:option('--digits', 2, 'how many digits has the number')
 cmd:option('--size', 'full', 'small | full')
 
 --[[ model ]] --

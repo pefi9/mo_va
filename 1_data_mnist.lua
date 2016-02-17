@@ -10,7 +10,7 @@
 classes = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'end' }
 DATA_WIDTH = 28
 DATA_HEIGHT = 28
-WIDTH = DATA_WIDTH * opt.digits + 20
+WIDTH = DATA_WIDTH * opt.digits + 20 * (opt.digits -1)
 HEIGHT = DATA_HEIGHT
 DATA_N_CHANNEL = 1
 N_CHANNELS = DATA_N_CHANNEL
@@ -28,10 +28,10 @@ if dataset == 'mnist' then
 
     -- train data
     local temp = torch.load('data/mnist/train.th7', 'ascii')
-    trsize = 10000 --temp[1]:size()[1]
+    trsize = (opt.size == 'small') and 10000 or temp[1]:size()[1]
 
     trainData.data = torch.FloatTensor(trsize, HEIGHT, WIDTH, 1)
-    trainData.labels = torch.FloatTensor(trsize, opt.digits + 1)
+    trainData.labels = torch.FloatTensor(trsize, opt.digits) -- + 1)
     for rec = 1, trsize do
         local tempData
         for digit = 1, opt.digits do
@@ -46,15 +46,15 @@ if dataset == 'mnist' then
             end
         end
         trainData.data[rec] = tempData
-        trainData.labels[rec][opt.digits + 1] = 11
+--        trainData.labels[rec][opt.digits + 1] = 11
     end
 
     -- test data
     local temp = torch.load('data/mnist/test.th7', 'ascii')
-    tesize = 1000 --temp[1]:size()[1]
+    tesize = (opt.size == 'small') and 1000 or temp[1]:size()[1]
 
     testData.data = torch.FloatTensor(tesize, HEIGHT, WIDTH, 1)
-    testData.labels = torch.FloatTensor(tesize, opt.digits + 1)
+    testData.labels = torch.FloatTensor(tesize, opt.digits) -- + 1)
     for rec = 1, tesize do
         local tempData
         for digit = 1, opt.digits do
@@ -69,7 +69,7 @@ if dataset == 'mnist' then
             end
         end
         testData.data[rec] = tempData
-        testData.labels[rec][opt.digits + 1] = 11
+--        testData.labels[rec][opt.digits + 1] = 11
     end
 
 end
