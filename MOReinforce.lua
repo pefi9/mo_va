@@ -14,6 +14,7 @@ end
 
 -- this can be called by updateGradInput
 function MOReinforce:rewardAs(input, step)
+    step = math.ceil(step / opt.steps)
     self.stepReward = self.reward[step]
     assert(self.stepReward:dim() == 1)
     if input:isSameSizeAs(self.stepReward) then

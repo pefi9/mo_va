@@ -182,7 +182,31 @@ train = dp.Optimizer{
             if not opt.silent then
                 print("learningRate", opt.learningRate)
             end
+
             print(agent:get(6):get(2):get(2):get(2).bias)
+
+            local inputs = ds:get('test','inputs')
+            local targets = ds:get('test','targets', 'b')
+
+            local input = inputs[1]
+            model:training() -- otherwise the rnn doesn't save intermediate time-step states
+            ra = model:findModules('nn.RecurrentAttention')[1]
+            if not opt.stochastic then
+                for i=1,#ra.actions do
+                    local rn = ra.action:getStepModule(i):findModules('nn.ReinforceNormal')[1]
+                    rn.stdev = 0 -- deterministic
+                end
+            end
+            local output = model:forward(input)
+            local locations = ra.actions
+            for _, l in pairs(locations) do
+                print(l[1][1] .. " X " .. l[1][2])
+            end
+
+            for i=1,#ra.actions do
+                local rn = ra.action:getStepModule(i):findModules('nn.ReinforceNormal')[1]
+                rn.stdev = opt.locatorStd
+            end
         end
     end,
 

@@ -32,7 +32,7 @@ end
 function MultiObjectRewardCriterion:updateOutput(input, target)
     assert(torch.type(input) == 'table')
     local input = input[1]
-    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(input[1]:size())):forward(input)
+    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(#input, input[1]:size(1), input[1]:size(2))):forward(input)
 
     self._maxVal = self._maxVal or input.new()
     self._maxIdx = self._maxIdx
@@ -55,6 +55,9 @@ function MultiObjectRewardCriterion:updateOutput(input, target)
     self.reward:resize(self._reward:size(1), self._reward:size(2)):copy(self._reward)
     self.reward:mul(self.scale)
 
+    -- backprop only error for record in batch where prev digit was correct
+--    self._mask = self._reward:clone()
+
     -- loss = -sum(reward)
     self.output = -self.reward:sum()
     if self.sizeAverage then
@@ -69,9 +72,9 @@ function MultiObjectRewardCriterion:updateGradInput(inputTable, target)
     --    assert(inputTable[2]:dim() == 3, 'Input[2] has to be in form: #objects x batchSize x 1 (dim of base')
     --    local baseline = self:toBatch(inputTable[2], 1)
     local input = inputTable[1]
-    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(input[1]:size())):forward(input)
+    input = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(#input, input[1]:size(1), input[1]:size(2))):forward(input)
     local baseline = inputTable[2]
-    baseline = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(baseline[1]:size())):forward(baseline)
+    baseline = nn.Sequential():add(nn.JoinTable(1)):add(nn.View(#baseline, baseline[1]:size(1), baseline[1]:size(2))):forward(baseline)
 
     -- reduce variance of reward using baseline
     self.vrReward = self.vrReward or self.reward.new()
@@ -83,13 +86,17 @@ function MultiObjectRewardCriterion:updateGradInput(inputTable, target)
     -- broadcast reward to modules
     self.module:reinforce(self.vrReward)
 
+    self.gradInput = { torch.Tensor() }
     -- zero gradInput (this criterion has no gradInput for class pred)
     self.gradInput[1]:resizeAs(input):zero()
-    self.gradInput[1] = self:fromBatch(self.gradInput[1], 1)
+    --    self.gradInput[1] = self:fromBatch(self.gradInput[1], 1)
+    self.gradInput[1] = nn.SplitTable(1):forward(self.gradInput[1])
 
     -- learn the baseline reward
     self.gradInput[2] = self.criterion:backward(baseline, self.reward)
-    self.gradInput[2] = self:fromBatch(self.gradInput[2], 1)
+    --    self.gradInput[2] = self:fromBatch(self.gradInput[2], 1)
+    self.gradInput[2] = nn.SplitTable(1):forward(self.gradInput[2])
+
     return self.gradInput
 end
 

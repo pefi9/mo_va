@@ -7,7 +7,7 @@
 --
 
 -- classes
-classes = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'end' }
+classes = { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}
 DATA_WIDTH = 28
 DATA_HEIGHT = 28
 WIDTH = DATA_WIDTH * opt.digits + 20 * (opt.digits -1)

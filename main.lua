@@ -14,17 +14,19 @@
 print("==> Loading required libraries")
 
 require 'dp'
---require 'dpnn'
+require 'dpnn'
 require 'rnn'
 require 'torch'
 require 'xlua'
 require 'optim'
 require 'paths'
+require 'gnuplot'
 
 dofile 'MOSequencer.lua'
-dofile 'MOReinforce.lua'
-dofile 'MOReinforceNormal.lua'
-dofile 'MORewardCriterion.lua'
+--dofile 'MOReinforce.lua'
+--dofile 'MOReinforceNormal.lua'
+--dofile 'MORewardCriterion.lua'
+dofile 'MORewardCriterion_table.lua'
 
 version = 1
 
@@ -39,8 +41,8 @@ cmd:text('Example:')
 cmd:text('$> th rnn-visual-attention.lua > results.txt')
 cmd:text('Options:')
 
-cmd:option('--threads', 1, 'set number of threads')
-cmd:option('--seed', 123)
+cmd:option('--threads', 2, 'set number of threads')
+cmd:option('--seed', 1234)
 
 --[[ data ]] --
 cmd:option('--dataset', 'mnist', 'which data to use: mnist | digits')
@@ -55,9 +57,10 @@ cmd:option('--steps', 5, 'how many glimpses should model take for predicting one
 cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse | margin | reinforce')
 
 --[[ train ]] --
+cmd:option('--loadModel', false, 'Load trained model from saving folder?')
 cmd:option('--save', 'testing', 'selecet subfolder where to store loggers')
-cmd:option('--batchSize', 10)
-cmd:option('--learningRate', 1e-1, 'setup the learning rate')
+cmd:option('--batchSize', 20)
+cmd:option('--learningRate', 1e-3, 'setup the learning rate')
 cmd:option('--momentum', 9e-1, 'setup the momentum')
 cmd:option('--weightDecay', 0, 'weight decay')
 cmd:option('--plot', true)
@@ -118,6 +121,10 @@ if opt.uniform > 0 then
     for k, param in ipairs(model:parameters()) do
         param:uniform(-opt.uniform, opt.uniform)
     end
+end
+
+if opt.loadModel then
+    model = torch.load(paths.concat(opt.save, 'model.net'))
 end
 
 if opt.preTrain then

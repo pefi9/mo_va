@@ -57,8 +57,8 @@ function train()
     -- set model to training mode (for modules that differ in training and testing, like Dropout)
     model:training()
 
---    prepareTrainSet()
---    normTrain()
+    --    prepareTrainSet()
+    --    normTrain()
     -- shuffle at each epoch
     shuffle = torch.randperm(trsize)
 
@@ -72,109 +72,88 @@ function train()
         xlua.progress(t, trsize)
 
         -- create mini batch
-        local inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
-        local targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
-        targets = targets:transpose(1,2)
-        local mask = torch.Tensor(opt.batchSize):fill(1)
+         inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
+         targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
+        targets = targets:transpose(1, 2)
+         mask = torch.Tensor(opt.batchSize):fill(1)
 
         -- Nesterov momentum
         -- (1) evaluate f(x) and df/dx
         -- first step in the direction of the momentum vector
-        if not prev_parameters then
-            prev_parameters = parameters:clone()
-        else
-            prev_parameters:resizeAs(parameters):copy(parameters)
-        end
-
-        if prev_dfdx then
-            parameters:add(momentum, prev_dfdx)
-        end
-
-        -- reset gradients
-        gradParameters:zero()
+        --        if not prev_parameters then
+        --            prev_parameters = parameters:clone()
+        --        else
+        --            prev_parameters:resizeAs(parameters):copy(parameters)
+        --        end
+        --
+        --        if prev_dfdx then
+        --            parameters:add(momentum, prev_dfdx)
+        --        end
+        --
+        --        -- reset gradients
+        --        gradParameters:zero()
         -- recurrent modules has to forget current batch
-        --        attention.rnn:forget()
-        --        attention.action:forget()
-
+        --                attention.rnn:forget()
+        --                attention.action:forget()
+        model:zeroGradParameters() -- affects gradParams
         -- f is the average of all criterions
         local f = 0
 
         local output = model:forward(inputs)
         local df_do = {}
 
---        for s = 1, rho do
---            -- init grads
---            df_do[s] = {}
---            df_do[s][1] = torch.FloatTensor(10, 11):fill(0)
---            df_do[s][2] = {}
---            df_do[s][2][1] = torch.FloatTensor(10, 11):fill(0)
---            df_do[s][2][2] = torch.FloatTensor(10, 1):fill(0)
---            -- save grads values for opt.steps-th index
---            if (s % opt.steps == 0) then
---                local d = math.ceil(s / 5)
---                local err = criterion:forward(output[s], targets[{ {}, d }])
---                f = f + err
---                -- update confusion
---                confusion:batchAdd(output[s][1], targets[{ {}, d }])
---                -- estimate df/dW
---                local temp = criterion:backward(output[s], targets[{ {}, d }])
---                local _, idxs = torch.max(output[s][1], 2)
---                for b = 1, opt.batchSize do
---                    df_do[s][1][b] = temp[1][b]:clone():mul(mask[b])
---                    df_do[s][2][1][b] = temp[2][1][b]:clone():mul(mask[b])
---                    df_do[s][2][2][b] = temp[2][2][b]:clone():mul(mask[b])
---                    if (idxs[b][1] == 11) or (idxs[b][1] ~= targets[b][d]) then
---                        mask[b] = 0
---                    end
---                end
---            end
---        end
+        for d = 1, opt.digits do
+            confusion:batchAdd(output[1][d], targets[d])
+        end
 
         local err = criterion:forward(output, targets)
-        f = f+err
+        f = f + err
         local gradInput = criterion:backward(output, targets)
 
+        for d = 1, opt.digits do
+            local reward = criterion.criterions[2].reward
+            for b = 1, opt.batchSize do
+                gradInput[1][d][b]:mul(mask[b])
+                gradInput[2][1][d][b]:mul(mask[b])
+                gradInput[2][2][d][b]:mul(mask[b])
+--                morn.reward[d][b] = morn.reward[d][b] * mask[b]
+                if (targets[d][b] == 11) or (reward[d][b] ~= 1) then
+                    mask[b] = 0
+                end
+            end
+        end
+
+
         model:backward(inputs, gradInput)
+        model:updateGradParameters(momentum) -- affects gradParams
+        model:updateParameters(lr) -- affects params
+--        model:maxParamNorm(1) -- affects params
 
         -- normalize gradients and f(X)
-        gradParameters:div(inputs:size()[1])
+        --        gradParameters:div(inputs:size()[1])
         trainError = trainError + (f / opt.batchSize / (opt.digits + 1))
-
-        -- weight decay
-        if (wd ~= 0) then
-            gradParameters:add(wd, parameters)
-        end
-
-        -- (4) apply momentum
-        if not prev_dfdx then
-            prev_dfdx = torch.Tensor():typeAs(gradParameters):resizeAs(gradParameters):fill(0)
-        else
-            prev_dfdx:mul(momentum)
-        end
-
-        prev_dfdx:add(-lr, gradParameters)
-        prev_parameters:add(prev_dfdx)
-        parameters:copy(prev_parameters)
-                model:maxParamNorm(1) -- affects params
+        --
+        --        -- weight decay
+        --        if (wd ~= 0) then
+        --            gradParameters:add(wd, parameters)
+        --        end
+        --
+        --        -- (4) apply momentum
+        --        if not prev_dfdx then
+        --            prev_dfdx = torch.Tensor():typeAs(gradParameters):resizeAs(gradParameters):fill(0)
+        --        else
+        --            prev_dfdx:mul(momentum)
+        --        end
+        --
+        --        prev_dfdx:add(-lr, gradParameters)
+        --        prev_parameters:add(prev_dfdx)
+        --        parameters:copy(prev_parameters)
+        --        model:maxParamNorm(1) -- affects params
     end
 
     if (opt.model == 'va') then
-        -- recurrent modules has to forget current batch
-        attention.rnn:forget()
-        attention.action:forget()
-        local temp = torch.Tensor(1, N_CHANNELS, HEIGHT, WIDTH)
-        temp[1] = trainData.data[trsize]
-        local out = model:forward(temp)
-        ra = model:findModules('nn.RecurrentAttention')[1]
-        local locations = ra.actions
-        for _, l in pairs(locations) do
-            print(l[1][1] .. " X " .. l[1][2])
-        end
-        for d = 1, opt.digits do
-            print(trainData.labels[trsize][d])
-            print(out[d * opt.steps][1])
-        end
 
+        printTestLoc()
         print(parameters:max())
         print(parameters:min())
         print(parameters:sum())
@@ -197,11 +176,11 @@ function train()
         trainLogger:plot()
     end
 
-    -- save/log current net
-    --    local filename = paths.concat(opt.save, 'model.net')
-    --    os.execute('mkdir -p ' .. sys.dirname(filename))
-    --    print('==> saving model to ' .. filename)
-    --    torch.save(filename, model)
+--     save log current net
+        local filename = paths.concat(opt.save, 'model.net')
+        os.execute('mkdir -p ' .. sys.dirname(filename))
+        print('==> saving model to ' .. filename)
+        torch.save(filename, model)
 
     -- next epoch
     confusion:zero()
@@ -209,6 +188,45 @@ function train()
     lr = (lrDecay == 0 and lr or lr / (1 + lrDecay))
 end
 
+
+function printTestLoc()
+
+    print("Loc step: " .. reinforce_step)
+
+    model:training() -- otherwise the rnn doesn't save intermediate time-step states
+    ra = model:findModules('nn.RecurrentAttention')[1]
+
+    for i = 1, #ra.actions do
+        local rn = ra.action:getStepModule(i):findModules('MOReinforceNormal')[1]
+        rn.stdev = 0 -- deterministic
+    end
+
+    out = model:forward(trainData.data[10])
+
+
+    locations = ra.actions
+    for _, l in pairs(locations) do
+        print(l[1][1] .. " X " .. l[1][2])
+    end
+
+    for d = 1, opt.digits do
+        print(trainData.labels[10][d])
+        print(out[1][d][1])
+    end
+
+    for i = 1, #ra.actions do
+        local rn = ra.action:getStepModule(i):findModules('MOReinforceNormal')[1]
+        rn.stdev = locatorStd
+        reinforce_step = 0
+    end
+
+--    local linear = model:findModules('nn.Linear')
+--    for k, v in pairs(linear) do
+--        gnuplot.figure(k)
+--        gnuplot.title(v:__tostring__())
+--        gnuplot.hist(v.weight, 100)
+--    end
+end
 
 
 function trainOptim()

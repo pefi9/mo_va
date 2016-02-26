@@ -24,7 +24,8 @@ function MOReinforceNormal:__init(stdev, stochastic)
     if not stdev then
         self.gradInput = { torch.Tensor(), torch.Tensor() }
     end
-    self.step = 0
+    -- TODO
+    reinforce_step = 0
 end
 
 function MOReinforceNormal:updateOutput(input)
@@ -59,7 +60,7 @@ function MOReinforceNormal:updateOutput(input)
             error "unsupported mean type"
         end
         if self.train then
-            self.step = self.step + 1
+            reinforce_step = reinforce_step + 1
         elseif self.train == nil then
             error "model.train has to be  defined!"
         end
@@ -108,8 +109,8 @@ function MOReinforceNormal:updateGradInput(input, gradOutput)
         end
     end
     -- multiply by reward
-    gradMean:cmul(self:rewardAs(mean, self.step))
-    self.step = self.step - 1
+    gradMean:cmul(self:rewardAs(mean, reinforce_step))
+    reinforce_step = reinforce_step - 1
 
     -- multiply by -1 ( gradient descent on mean )
     gradMean:mul(-1)
