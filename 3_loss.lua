@@ -42,7 +42,7 @@ elseif opt.loss == 'reinforce' then
 
     criterion = nn.ParallelCriterion(true)
     criterion:add(nn.ModuleCriterion(nn.SequencerCriterion(nn.ClassNLLCriterion()), nil, nn.Convert())) -- BACKPROP
-    criterion:add(MultiObjectRewardCriterion(model, 2), nil, nn.Convert()) -- REINFORCE
+    criterion:add(MultiObjectRewardCriterion(agent, 2), nil, nn.Convert()) -- REINFORCE
 
 else
 

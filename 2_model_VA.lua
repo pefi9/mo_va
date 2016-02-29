@@ -101,13 +101,15 @@ rnn = nn.Recurrent(rSize, glimpse, recurrent, nn.ReLU(), 99999)
 locator = nn.Sequential()
 locator:add(nn.Linear(rSize, 2))
 locator:add(nn.HardTanh()) -- bounds mean between -1 and 1
-locator:add(nn.ReinforceNormal(2 * locatorStd, stochastic)) -- sample from normal, uses REINFORCE learning rule
+--morn = MReinforceNormal(2 * locatorStd, stochastic) -- sample from normal, uses REINFORCE learning rule
+--locator:add(morn)
+locator:add(nn.ReinforceNormal(2*locatorStd, stochastic))
 assert(locator:get(3).stochastic == stochastic, "Please update the dpnn package : luarocks install dpnn")
 locator:add(nn.HardTanh()) -- bounds sample between -1 and 1
 locator:add(nn.MulConstant(unitPixels / width))
 
-dofile 'RecurrentAttention.lua'
 --[[ ATTENTION MODEL ]]--
+dofile 'RecurrentAttention.lua'
 attention = RecurrentAttention(rnn, locator, rho, {rSize})
 
 
@@ -127,13 +129,13 @@ classifier = nn.Sequential()
 classifier:add(nn.Linear(rSize, noutputs))
 classifier:add(nn.LogSoftMax())
 
-agent:add(MOSequencer(classifier))
+agent:add(nn.Sequencer(nn.Recursor(classifier)))
 
 --[[ REWARD PREDICTOR ]]--
 seq = nn.Sequential()
 seq:add(nn.Constant(1,1))
 seq:add(nn.Add(1))
-concat = nn.ConcatTable():add(nn.Identity()):add(MOSequencer(seq))
+concat = nn.ConcatTable():add(nn.Identity()):add(nn.Sequencer(nn.Recursor(seq)))
 concat2 = nn.ConcatTable():add(nn.Identity()):add(concat)
 
 -- output will be : {classpred, {classpred, basereward}}

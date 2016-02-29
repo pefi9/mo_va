@@ -22,7 +22,7 @@ require 'optim'
 require 'paths'
 require 'gnuplot'
 
-dofile 'MOSequencer.lua'
+--dofile 'MOSequencer.lua'
 --dofile 'MOReinforce.lua'
 --dofile 'MOReinforceNormal.lua'
 --dofile 'MORewardCriterion.lua'
