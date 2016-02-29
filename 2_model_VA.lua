@@ -129,13 +129,13 @@ classifier = nn.Sequential()
 classifier:add(nn.Linear(rSize, noutputs))
 classifier:add(nn.LogSoftMax())
 
-agent:add(nn.Sequencer(nn.Recursor(classifier)))
+agent:add(nn.Sequencer(classifier))
 
 --[[ REWARD PREDICTOR ]]--
 seq = nn.Sequential()
 seq:add(nn.Constant(1,1))
 seq:add(nn.Add(1))
-concat = nn.ConcatTable():add(nn.Identity()):add(nn.Sequencer(nn.Recursor(seq)))
+concat = nn.ConcatTable():add(nn.Identity()):add(nn.Sequencer(seq))
 concat2 = nn.ConcatTable():add(nn.Identity()):add(concat)
 
 -- output will be : {classpred, {classpred, basereward}}
