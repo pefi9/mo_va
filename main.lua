@@ -27,6 +27,7 @@ require 'gnuplot'
 --dofile 'MOReinforceNormal.lua'
 --dofile 'MORewardCriterion.lua'
 dofile 'MORewardCriterion_table.lua'
+dofile 'MOSelectTable.lua'
 
 version = 1
 
@@ -45,8 +46,8 @@ cmd:option('--threads', 2, 'set number of threads')
 cmd:option('--seed', 1234)
 
 --[[ data ]] --
-cmd:option('--dataset', 'mnist', 'which data to use: mnist | digits')
-cmd:option('--digits', 2, 'how many digits has the number')
+cmd:option('--dataset', 'mnist', 'which data to use: mnist | digits | lol_time')
+cmd:option('--digits', 4, 'how many digits has the number')
 cmd:option('--size', 'full', 'small | full')
 
 --[[ model ]] --
@@ -60,7 +61,7 @@ cmd:option('--loss', 'reinforce', 'type of loss function to minimize: nll | mse 
 cmd:option('--loadModel', false, 'Load trained model from saving folder?')
 cmd:option('--save', 'testing', 'selecet subfolder where to store loggers')
 cmd:option('--batchSize', 20)
-cmd:option('--learningRate', 1e-3, 'setup the learning rate')
+cmd:option('--learningRate', 1e-2, 'setup the learning rate')
 cmd:option('--momentum', 9e-1, 'setup the momentum')
 cmd:option('--weightDecay', 0, 'weight decay')
 cmd:option('--plot', true)
@@ -97,6 +98,12 @@ elseif (opt.dataset == 'lol') then
 
     -- if preTrain then load not shifted data else load data with random padding
     dofile '1_data_lol_shifted.lua'
+
+elseif (opt.dataset == 'lol_time') then
+
+    dofile '1_data_lol.lua'
+
+
 end
 
 -- create modules

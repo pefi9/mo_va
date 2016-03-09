@@ -27,16 +27,16 @@ lsSize = 128
 
 -- glimpse sensor
 glimpseSize = 8
-glimpseCount = 2
+glimpseCount = 3
 glimpseScale = 2
 
 gsSize = 128
 
 -- hidden units, filter sizes (for ConvNet only):
 nstates = { 36 }
-filtsize = { 3 }
+filtsize = { 5 }
 poolsize = { 2 }
-remainSize = 3
+remainSize = 4
 
 -- glimpse
 gSize = 256
@@ -69,7 +69,7 @@ glimpseSensor:add(nn.DontCast(nn.SpatialGlimpse(glimpseSize, glimpseCount, glimp
 conv = nn.Sequential()
 conv:add(nn.SpatialConvolution(glimpseCount * nfeats, nstates[1], filtsize[1], filtsize[1]))
 conv:add(nn.ReLU())
-conv:add(nn.SpatialMaxPooling(poolsize[1], poolsize[1]))
+--conv:add(nn.SpatialMaxPooling(poolsize[1], poolsize[1]))
 conv:add(nn.Reshape(nstates[1] * (remainSize^2)))
 conv:add(nn.Linear(nstates[1] * (remainSize^2), gsSize))
 glimpseSensor:add(conv)
@@ -78,7 +78,7 @@ glimpseSensor:add(conv)
 --mlp:add(nn.Collapse(3))
 --mlp:add(nn.Linear(nfeats * (glimpseSize^2) * glimpseCount, gsSize))
 --glimpseSensor:add(mlp)
-glimpseSensor:add(nn.ReLU())
+--glimpseSensor:add(nn.ReLU())
 
 
 

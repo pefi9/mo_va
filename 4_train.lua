@@ -72,10 +72,10 @@ function train()
         xlua.progress(t, trsize)
 
         -- create mini batch
-         inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
-         targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
+        inputs = trainData.data:index(1, shuffle:sub(t, t + opt.batchSize - 1):long())
+        targets = trainData.labels:index(1, shuffle:sub(t, t + opt.batchSize - 1):long()) --[{{},1}]
         targets = targets:transpose(1, 2)
-         mask = torch.Tensor(opt.batchSize):fill(1)
+        mask = torch.Tensor(opt.batchSize):fill(1)
 
         -- Nesterov momentum
         -- (1) evaluate f(x) and df/dx
@@ -116,7 +116,8 @@ function train()
                 gradInput[1][d][b]:mul(mask[b])
                 gradInput[2][1][d][b]:mul(mask[b])
                 gradInput[2][2][d][b]:mul(mask[b])
---                morn.reward[d][b] = morn.reward[d][b] * mask[b]
+                attention.action:getStepModule(d * opt.steps):get(3).reward[b] = attention.action:getStepModule(d * opt.steps):get(3).reward[b] * mask[b]
+                --                morn.reward[d][b] = morn.reward[d][b] * mask[b]
                 if (targets[d][b] == 11) or (reward[d][b] ~= 1) then
                     mask[b] = 0
                 end
@@ -127,7 +128,7 @@ function train()
         model:backward(inputs, gradInput)
         model:updateGradParameters(momentum) -- affects gradParams
         model:updateParameters(lr) -- affects params
---        model:maxParamNorm(1) -- affects params
+        --        model:maxParamNorm(1) -- affects params
 
         -- normalize gradients and f(X)
         --        gradParameters:div(inputs:size()[1])
@@ -154,6 +155,7 @@ function train()
     if (opt.model == 'va') then
 
         printTestLoc()
+        printOutKernels()
         print(parameters:max())
         print(parameters:min())
         print(parameters:sum())
@@ -176,11 +178,11 @@ function train()
         trainLogger:plot()
     end
 
---     save log current net
-        local filename = paths.concat(opt.save, 'model.net')
-        os.execute('mkdir -p ' .. sys.dirname(filename))
-        print('==> saving model to ' .. filename)
-        torch.save(filename, model)
+    --     save log current net
+    local filename = paths.concat(opt.save, 'model.net')
+    os.execute('mkdir -p ' .. sys.dirname(filename))
+    print('==> saving model to ' .. filename)
+    torch.save(filename, model)
 
     -- next epoch
     confusion:zero()
@@ -191,13 +193,13 @@ end
 
 function printTestLoc()
 
-    print("Loc step: " .. reinforce_step)
+    --    print("Loc step: " .. reinforce_step)
 
     model:training() -- otherwise the rnn doesn't save intermediate time-step states
-    ra = model:findModules('nn.RecurrentAttention')[1]
+    ra = model:findModules('RecurrentAttention')[1]
 
     for i = 1, #ra.actions do
-        local rn = ra.action:getStepModule(i):findModules('MOReinforceNormal')[1]
+        local rn = ra.action:getStepModule(i):findModules('nn.ReinforceNormal')[1]
         rn.stdev = 0 -- deterministic
     end
 
@@ -215,17 +217,17 @@ function printTestLoc()
     end
 
     for i = 1, #ra.actions do
-        local rn = ra.action:getStepModule(i):findModules('MOReinforceNormal')[1]
+        local rn = ra.action:getStepModule(i):findModules('nn.ReinforceNormal')[1]
         rn.stdev = locatorStd
         reinforce_step = 0
     end
 
---    local linear = model:findModules('nn.Linear')
---    for k, v in pairs(linear) do
---        gnuplot.figure(k)
---        gnuplot.title(v:__tostring__())
---        gnuplot.hist(v.weight, 100)
---    end
+    --    local linear = model:findModules('nn.Linear')
+    --    for k, v in pairs(linear) do
+    --        gnuplot.figure(k)
+    --        gnuplot.title(v:__tostring__())
+    --        gnuplot.hist(v.weight, 100)
+    --    end
 end
 
 

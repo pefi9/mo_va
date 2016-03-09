@@ -52,14 +52,13 @@ function preTrainModel()
         torch.save(paths.concat(opt.save, 'preTrainedModel.net'), model)
     else
         local tempModel = torch.load(paths.concat(opt.save, 'preTrainedModel.net'))
-        fixedGlimpse = tempModel:get(1):clone()
---        fixedClassifier = tempModel:get(2):clone()
+        glimpse = tempModel:get(1):clone()
+        --        fixedClassifier = tempModel:get(2):clone()
     end
 
+    printOutKernels()
     opt.preTrain = false
 
-    glimpse = fixedGlimpse:clone()
---    classifier = fixedClassifier:clone()
 
     model = agent
     parameters, gradParameters = model:getParameters()
@@ -69,3 +68,13 @@ function preTrainModel()
     epoch = 0
 end
 
+
+function printOutKernels()
+    if (conv) then
+        local weights = conv:get(1).weight
+        for i = 1, glimpseCount do
+            local img = image.toDisplayTensor { input = weights[{ {}, i, {}, {} }], padding = 1, scaleeach = 20 }
+            image.save(paths.concat(opt.save, 'ch_' .. i .. 'w_epoch_' .. epoch .. '.png'), img)
+        end
+    end
+end

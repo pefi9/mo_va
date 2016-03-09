@@ -20,13 +20,14 @@
 ------------------------------------------------------------------------
 local MultiObjectRewardCriterion, parent = torch.class("MultiObjectRewardCriterion", "nn.Criterion")
 
-function MultiObjectRewardCriterion:__init(module, scale, criterion)
+function MultiObjectRewardCriterion:__init(module, scale, criterion, nGlimpses)
     parent.__init(self)
     self.module = module -- so it can call module:reinforce(reward)
     self.scale = scale or 1 -- scale of reward
     self.criterion = criterion or nn.MSECriterion() -- baseline criterion
     self.sizeAverage = true
     self.gradInput = { torch.Tensor() }
+    self.nGlimpses = nGlimpses
 end
 
 function MultiObjectRewardCriterion:updateOutput(input, target)
@@ -84,6 +85,10 @@ function MultiObjectRewardCriterion:updateGradInput(inputTable, target)
     self.gradInput, self.vrReward = {}, {}
     self.gradInput[1] = {}
     self.gradInput[2] = {}
+    for glimpse =1, self._nObjects * self.nGlimpses do
+        self.vrReward[glimpse] = self.vrReward[glimpse] or self.reward[1].new()
+        self.vrReward[glimpse]:resize(self.reward[1]:size(1)):zero()
+    end
 
     for object = 1, self._nObjects do
 
@@ -91,12 +96,12 @@ function MultiObjectRewardCriterion:updateGradInput(inputTable, target)
         local objectBaseline = baseline[object]
         local objectReward = self.reward[object]
 
-        -- reduce variance of reward using baseline
-        self.vrReward[object] = self.vrReward[object] or objectReward.new()
-        self.vrReward[object]:resizeAs(self.reward[object]):copy(objectReward)
-        self.vrReward[object]:add(-1, objectBaseline)
+        -- reduce variance of reward using baseline and copy reward into the n-th step glimpses
+        self.vrReward[object * self.nGlimpses] = self.vrReward[object] or objectReward.new()
+        self.vrReward[object * self.nGlimpses]:resize(self.reward[object]:size(1)):copy(objectReward)
+        self.vrReward[object * self.nGlimpses]:add(-1, objectBaseline)
         if self.sizeAverage then
-            self.vrReward[object]:div(objectInput:size(1))
+            self.vrReward[object * self.nGlimpses]:div(objectInput:size(1))
         end
 
         -- zero gradInput (this criterion has no gradInput for class pred)
